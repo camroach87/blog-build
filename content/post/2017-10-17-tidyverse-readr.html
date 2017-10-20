@@ -1,0 +1,86 @@
+---
+title: "tidyverse: readr"
+author: "Cameron Roach"
+date: 2017-10-17T10:23:00-00:00
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse"]
+description: Loading the data
+---
+
+
+
+<p>Despite appearing fairly innocuous, loading data can be one of the most frustrating challenges when starting a data science project. Missing values, trailing commas, superfluous quotes in strings and many other issues can all cause headaches when reading a csv file. I’m sure many an aspiring data scientist has been left feeling discouraged after falling at this early hurdle - I know I have.</p>
+<p>This post introduces some basics of loading data using a csv. It assumes that you’ve managed to get your data into a reasonable format without any of the above issues. I recommend viewing your csv in a text editor such as Notepad++ or Atom before attempting any coding. Be wary of excel as it can hide (and sometimes introduce) problems with csv files.</p>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>This tutorial will primarily look at R’s <code>readr</code> package. This package contains the <code>read_csv</code> function which is similar to base R’s <code>read.csv</code> function, but with some enhancements.</p>
+</div>
+<div id="load-the-data" class="section level2">
+<h2>Load the data</h2>
+<p>If you haven’t already, install the required package by running</p>
+<pre class="r"><code>install.packages(&quot;readr&quot;)</code></pre>
+<p>The data can be loaded with the code below. The two dots (..) in the file name indicate that we wish to move up a folder from our current working directory. If you’re unsure of which directory is currently in use run the <code>getwd()</code> command to check.</p>
+<pre class="r"><code>require(readr)</code></pre>
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;../../data/2017-10-17-data.csv&quot;)
+## Parsed with column specification:
+## cols(
+##   Date = col_character(),
+##   Project = col_character(),
+##   Income = col_integer()
+## )</code></pre>
+<p>We see from these messages that <code>read_csv</code> has determined the Date and Project columns are character types whereas Income is integer. The data looks like</p>
+<pre class="r"><code>csv_data
+## # A tibble: 14 x 3
+##          Date Project  Income
+##         &lt;chr&gt;   &lt;chr&gt;   &lt;int&gt;
+##  1   1/1/2010       A 1003412
+##  2  5/12/2011       A   23421
+##  3  13/1/2010       A 1003412
+##  4  1/12/2011       A   23421
+##  5  21/1/2010       A 1003412
+##  6 12/12/2011       A   23421
+##  7  31/1/2010       B 1003412
+##  8  1/12/2011       B   23421
+##  9  23/1/2010       B 1003412
+## 10 30/13/2011       C   23421
+## 11  11/1/2010       C 1003412
+## 12 21/12/2011    &lt;NA&gt;   23421
+## 13  12/1/2010       A 1003412
+## 14 11/12/2011       A   23421</code></pre>
+<p>One nice thing about <code>read_csv</code> compared to <code>read.csv</code> is data is imported as a tibble rather than a data.frame. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. I’ve accidentally filled my console by forgetting to print <code>head(csv_data)</code> many times. Another nice touch is character columns are imported as characters rather than factors. Factors can be useful, but they are also fiddly to deal with especially for newcomers to R.</p>
+</div>
+<div id="column-type-specification" class="section level2">
+<h2>Column type specification</h2>
+<p>One problem with our imported data is the Date column has been read as a string. Conveniently, <code>readr</code> allows us to specify the data type of each column using the <code>col_types</code> argument and <code>cols</code> function.</p>
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;../../data/2017-10-17-data.csv&quot;,
+                     col_types = cols(
+                       Date = col_date(format = &quot;%d/%m/%Y&quot;),
+                       Project = col_character(),
+                       Income = col_integer()
+                       )
+                     )
+## Warning in rbind(names(probs), probs_f): number of columns of result is not
+## a multiple of vector length (arg 2)
+## Warning: 1 parsing failure.
+## row # A tibble: 1 x 5 col     row   col   expected     actual                             file expected   &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;      &lt;chr&gt;                            &lt;chr&gt; actual 1    10  Date valid date 30/13/2011 &#39;../../data/2017-10-17-data.csv&#39; file # A tibble: 1 x 5</code></pre>
+<p>Remembering the correct date specification is a real pain (<a href="http://strftime.net/">this</a> can be useful). Personally I find it easier to use the <code>lubridate</code> and <code>dplyr</code> packages to convert strings into dates, but that’s a topic for another tutorial!</p>
+<p>The correctly formatted data is shown below. One of the dates was invalid (30/13/2011) and so an <code>NA</code> value was returned.</p>
+<pre class="r"><code>csv_data
+## # A tibble: 14 x 3
+##          Date Project  Income
+##        &lt;date&gt;   &lt;chr&gt;   &lt;int&gt;
+##  1 2010-01-01       A 1003412
+##  2 2011-12-05       A   23421
+##  3 2010-01-13       A 1003412
+##  4 2011-12-01       A   23421
+##  5 2010-01-21       A 1003412
+##  6 2011-12-12       A   23421
+##  7 2010-01-31       B 1003412
+##  8 2011-12-01       B   23421
+##  9 2010-01-23       B 1003412
+## 10         NA       C   23421
+## 11 2010-01-11       C 1003412
+## 12 2011-12-21    &lt;NA&gt;   23421
+## 13 2010-01-12       A 1003412
+## 14 2011-12-11       A   23421</code></pre>
+</div>

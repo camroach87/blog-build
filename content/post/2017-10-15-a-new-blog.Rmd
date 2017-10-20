@@ -1,0 +1,40 @@
+---
+title: "A new blog"
+author: "Cameron Roach"
+date: 2017-10-15T22:47:00-00:00
+categories: ["R"]
+tags: ["R", "Python", "Machine learning"]
+description: What have we here?
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+Many of my friends and colleagues in the data science world maintain blogs. Research, insights and tutorials are frequently posted which I often benefit from. I'm always amazed by the talent and generosity of others in this field. The open source communities of R and Python are quite special.
+
+This blog is my attempt to give something back. My background is in probability and statistics though I do not consider myself much of a mathematician. I have very little formal training in programming and am mostly self-taught. However, I do believe I possess just enough of an aptitude for each of these areas to be a somewhat decent data scientist.
+
+## R
+
+I have been programming in R for several years and have started to develop packages to help with my workflow. I'm a big believer in the "tidyverse" way of doing things and aim to offer some tutorials on the more popular packages such as dplyr, tidyr, ggplot2 and shiny.
+
+R is a fantastic language, but does have a sharp learning curve early on. I hope that my tutorials can help others to overcome this initial challenge and start getting results quickly.
+
+## Python
+
+Python and R are two of the most popular languages for data science. Python is still relatively new to me, but I have gained experience using the standard data science packages (numpy, pandas, scikit-learn, etc.).
+
+My take on the Python vs. R debate is that R seems to specialise in data science whereas Python is a much broader language capable of handling tasks well outside the data science sphere. Thanks to the tidyverse I would argue that dealing with data is slightly easier in R, but Python is not far behind. On the other hand, I've noticed a trend that some APIs are being developed for Python and not R. An example is TensorFlow which has an officially supported API for Python but only a set of bindings that call Python modules for R. This claim is based more on gut-feel than incontrovertible evidence, but I know there are others who feel the same way.
+
+Anyway, it is a moot point since both are fantastic languages capable of handling almost any statistical task. I may try to write some posts that compare Python and R and possibly offer some tutorials that are Python focused.
+
+## Machine learning
+
+After spending several years studying mathematics and wondering what I was doing with my life I stumbled across a book that changed my view of the field. Whereas I was previously taught Fisherian statistics and rigorous probability theory by rote, this new book exposed me to a practical and creative side of statistics I hadn't yet encountered. The book was "Introduction to Statistical Learning" by Gareth James, et al. (available [here](http://www-bcf.usc.edu/~gareth/ISL/)). Boosting, random forests, clustering and many more techniques were all new to me and have been an interest ever since.
+
+I enjoy learning about new learning algorithms and testing their performance. My hope is to one day move towards developing statistical and machine learning methods. Any progress I make in this area will be included here.
+
+## In closing
+
+This blog is likely to start with reasonably simple material. An occasional tutorial or data science experiment will be posted now and then. As I develop my skills there will probably be some more research and package development feeding in. Hopefully this can help some people in the community!
