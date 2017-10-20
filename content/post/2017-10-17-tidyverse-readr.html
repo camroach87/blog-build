@@ -17,11 +17,22 @@ description: Loading the data
 </div>
 <div id="load-the-data" class="section level2">
 <h2>Load the data</h2>
+</div>
+<div id="getting-your-working-directory-right" class="section level2">
+<h2>Getting your working directory right</h2>
+<p><strong>TODO</strong></p>
+<ul>
+<li><code>getwd</code> <code>setwd</code></li>
+<li>Always try to reference folders within the current working directory in case project needs to be moved.</li>
+<li>Can avoid the set/get working directory difficulties by using projects in RStudio.</li>
+</ul>
+<div id="using-readr" class="section level3">
+<h3>Using readr</h3>
 <p>If you haven’t already, install the required package by running</p>
 <pre class="r"><code>install.packages(&quot;readr&quot;)</code></pre>
-<p>The data can be loaded with the code below. The two dots (..) in the file name indicate that we wish to move up a folder from our current working directory. If you’re unsure of which directory is currently in use run the <code>getwd()</code> command to check.</p>
+<p>The data can be loaded with the code below. Here I have my data stored in a folder called “data” in the current working directory. I recommend structuring code so that paths relative to your current working directory are used. That way, if you ever need to copy your project to another computer or directory, you can simply copy the entire directory and still have everything working. Nothing will work if absolute paths (e.g. /Users/cameron/GitHub/blog-post/data) are used and the project needs to be moved.</p>
 <pre class="r"><code>require(readr)</code></pre>
-<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;../../data/2017-10-17-data.csv&quot;)
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;data/2017-10-17-data.csv&quot;)
 ## Parsed with column specification:
 ## cols(
 ##   Date = col_character(),
@@ -49,10 +60,13 @@ description: Loading the data
 ## 14 11/12/2011       A   23421</code></pre>
 <p>One nice thing about <code>read_csv</code> compared to <code>read.csv</code> is data is imported as a tibble rather than a data.frame. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. I’ve accidentally filled my console by forgetting to print <code>head(csv_data)</code> many times. Another nice touch is character columns are imported as characters rather than factors. Factors can be useful, but they are also fiddly to deal with especially for newcomers to R.</p>
 </div>
-<div id="column-type-specification" class="section level2">
-<h2>Column type specification</h2>
+</div>
+<div id="some-extras" class="section level2">
+<h2>Some extras</h2>
+<div id="column-type-specification" class="section level3">
+<h3>Column type specification</h3>
 <p>One problem with our imported data is the Date column has been read as a string. Conveniently, <code>readr</code> allows us to specify the data type of each column using the <code>col_types</code> argument and <code>cols</code> function.</p>
-<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;../../data/2017-10-17-data.csv&quot;,
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;data/2017-10-17-data.csv&quot;,
                      col_types = cols(
                        Date = col_date(format = &quot;%d/%m/%Y&quot;),
                        Project = col_character(),
@@ -62,8 +76,16 @@ description: Loading the data
 ## Warning in rbind(names(probs), probs_f): number of columns of result is not
 ## a multiple of vector length (arg 2)
 ## Warning: 1 parsing failure.
-## row # A tibble: 1 x 5 col     row   col   expected     actual                             file expected   &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;      &lt;chr&gt;                            &lt;chr&gt; actual 1    10  Date valid date 30/13/2011 &#39;../../data/2017-10-17-data.csv&#39; file # A tibble: 1 x 5</code></pre>
+## row # A tibble: 1 x 5 col     row   col   expected     actual                       file expected   &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;      &lt;chr&gt;                      &lt;chr&gt; actual 1    10  Date valid date 30/13/2011 &#39;data/2017-10-17-data.csv&#39; file # A tibble: 1 x 5</code></pre>
 <p>Remembering the correct date specification is a real pain (<a href="http://strftime.net/">this</a> can be useful). Personally I find it easier to use the <code>lubridate</code> and <code>dplyr</code> packages to convert strings into dates, but that’s a topic for another tutorial!</p>
+</div>
+<div id="white-space-trimming" class="section level3">
+<h3>White space trimming</h3>
+<p><strong>TODO</strong></p>
+</div>
+</div>
+<div id="in-summary" class="section level2">
+<h2>In summary</h2>
 <p>The correctly formatted data is shown below. One of the dates was invalid (30/13/2011) and so an <code>NA</code> value was returned.</p>
 <pre class="r"><code>csv_data
 ## # A tibble: 14 x 3
