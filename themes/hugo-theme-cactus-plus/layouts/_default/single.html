@@ -39,11 +39,7 @@
                 {{ partial "github-issues-tip.html" . }}
             {{ end }}
 
-            {{ if .Site.Params.enableDisqus }}
-                {{ if eq .Params.disabledisqus "true" }}
-                    {{ partial "disqus.html" . }}
-                {{ end }}
-            {{ end }}
+            {{ partial "disqus.html" . }}
 
             {{ if .Site.Params.enableDuoshuo }}
                 {{ if eq .Params.disableduoshuo "true" }}

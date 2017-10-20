@@ -1,5 +1,5 @@
 # Site settings
-baseurl = "https://camroach87.github.io/"
+baseurl = "/"
 # HTML Language Code Reference, such as en, zh-cn
 languageCode = "en"
 title = "Cameron's blog"
@@ -18,10 +18,7 @@ ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
 	#twitter = "https://twitter.com/camroach87"
 	enableRSS = true
 
-	# Disqus comment
 	disqusShortname = "camroach87-github-io"
-	# Disable disqus comments by set `enableDisqus = "false"`
-	enableDisqus = true
 
 	# Duoshuo comment
 	duoshuoShortname = "your_duoshuo_short_name"
