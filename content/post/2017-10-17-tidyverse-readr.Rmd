@@ -1,5 +1,5 @@
 ---
-title: "tidyverse: readr"
+title: "5 minute tidyverse: readr"
 author: "Cameron Roach"
 date: 2017-10-17T10:23:00-00:00
 categories: ["R"]
@@ -15,6 +15,10 @@ knitr::opts_chunk$set(
 )
 ```
 
+
+
+_Update (21/10/2017): This is all under construction atm. Rewriting this post and figuring out some syntax highlighting issues._
+
 Despite appearing fairly innocuous, loading data can be one of the most frustrating challenges when starting a data science project. Missing values, trailing commas, superfluous quotes in strings and many other issues can all cause headaches when reading a csv file. I'm sure many an aspiring data scientist has been left feeling discouraged after falling at this early hurdle - I know I have.
 
 This post introduces some basics of loading data using a csv. It assumes that you've managed to get your data into a reasonable format without any of the above issues. I recommend viewing your csv in a text editor such as Notepad++ or Atom before attempting any coding. Be wary of excel as it can hide (and sometimes introduce) problems with csv files.
@@ -25,7 +29,7 @@ This tutorial will primarily look at R's `readr` package. This package contains 
 
 ## Load the data
 
-## Getting your working directory right
+### Getting your working directory right
 
 __TODO__
 
