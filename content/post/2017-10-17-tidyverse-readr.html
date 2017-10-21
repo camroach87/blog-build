@@ -9,57 +9,54 @@ description: Loading the data
 
 
 
-<p><em>Update (21/10/2017): This is all under construction atm. Rewriting this post and figuring out some syntax highlighting issues.</em></p>
+<p><em>Update (22/10/2017): I’ll be rewriting this post to add a few tips. Leaving this old version up as a stopgap.</em></p>
 <p>Despite appearing fairly innocuous, loading data can be one of the most frustrating challenges when starting a data science project. Missing values, trailing commas, superfluous quotes in strings and many other issues can all cause headaches when reading a csv file. I’m sure many an aspiring data scientist has been left feeling discouraged after falling at this early hurdle - I know I have.</p>
 <p>This post introduces some basics of loading data using a csv. It assumes that you’ve managed to get your data into a reasonable format without any of the above issues. I recommend viewing your csv in a text editor such as Notepad++ or Atom before attempting any coding. Be wary of excel as it can hide (and sometimes introduce) problems with csv files.</p>
 <div id="packages" class="section level2">
 <h2>Packages</h2>
-<p>This tutorial will primarily look at R’s <code>readr</code> package. This package contains the <code>read_csv</code> function which is similar to base R’s <code>read.csv</code> function, but with some enhancements.</p>
+<p>This tutorial will use R’s <code>readr</code> package. This package contains the <code>read_csv</code> function which is similar to base R’s <code>read.csv</code> function, but with some enhancements.</p>
 </div>
 <div id="load-the-data" class="section level2">
 <h2>Load the data</h2>
-<div id="getting-your-working-directory-right" class="section level3">
-<h3>Getting your working directory right</h3>
-<p><strong>TODO</strong></p>
-<ul>
-<li><code>getwd</code> <code>setwd</code></li>
-<li>Always try to reference folders within the current working directory in case project needs to be moved.</li>
-<li>Can avoid the set/get working directory difficulties by using projects in RStudio.</li>
-</ul>
-</div>
+<!-- ### Getting your working directory right -->
+<!-- __TODO__ -->
+<!-- * `getwd` `setwd` -->
+<!-- * Always try to reference folders within the current working directory in case project needs to be moved. -->
+<!-- * Can avoid the set/get working directory difficulties by using projects in RStudio. -->
 <div id="using-readr" class="section level3">
 <h3>Using readr</h3>
-<p>If you haven’t already, install the required package by running</p>
+<p>If you haven’t already, install the <code>readr</code> package by running</p>
 <pre class="r"><code>install.packages(&quot;readr&quot;)</code></pre>
-<p>The data can be loaded with the code below. Here I have my data stored in a folder called “data” in the current working directory. I recommend structuring code so that paths relative to your current working directory are used. That way, if you ever need to copy your project to another computer or directory, you can simply copy the entire directory and still have everything working. Nothing will work if absolute paths (e.g. /Users/cameron/GitHub/blog-post/data) are used and the project needs to be moved.</p>
+<p>Data can be loaded with the code below. Here I have my data stored in a folder called “data” in the current working directory. I recommend structuring code so that paths relative to your current working directory are used. That way, if you ever need to move your project to another computer or directory, you can simply copy the entire project directory and still have working code. Code may fail if absolute paths are used and any part of a project is moved.</p>
 <pre class="r"><code>require(readr)</code></pre>
 <pre class="r"><code>csv_data &lt;- read_csv(file = &quot;data/2017-10-17-data.csv&quot;)
 ## Parsed with column specification:
 ## cols(
 ##   Date = col_character(),
 ##   Project = col_character(),
+##   Component = col_character(),
 ##   Income = col_integer()
 ## )</code></pre>
-<p>We see from these messages that <code>read_csv</code> has determined the Date and Project columns are character types whereas Income is integer. The data looks like</p>
+<p>We see from these messages that <code>read_csv</code> has determined the Date, Project and Component columns are character types whereas Income is integer. The data looks like</p>
 <pre class="r"><code>csv_data
-## # A tibble: 14 x 3
-##          Date Project  Income
-##         &lt;chr&gt;   &lt;chr&gt;   &lt;int&gt;
-##  1   1/1/2010       A 1003412
-##  2  5/12/2011       A   23421
-##  3  13/1/2010       A 1003412
-##  4  1/12/2011       A   23421
-##  5  21/1/2010       A 1003412
-##  6 12/12/2011       A   23421
-##  7  31/1/2010       B 1003412
-##  8  1/12/2011       B   23421
-##  9  23/1/2010       B 1003412
-## 10 30/13/2011       C   23421
-## 11  11/1/2010       C 1003412
-## 12 21/12/2011    &lt;NA&gt;   23421
-## 13  12/1/2010       A 1003412
-## 14 11/12/2011       A   23421</code></pre>
-<p>One nice thing about <code>read_csv</code> compared to <code>read.csv</code> is data is imported as a tibble rather than a data.frame. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. I’ve accidentally filled my console by forgetting to print <code>head(csv_data)</code> many times. Another nice touch is character columns are imported as characters rather than factors. Factors can be useful, but they are also fiddly to deal with especially for newcomers to R.</p>
+## # A tibble: 14 x 4
+##          Date        Project Component Income
+##         &lt;chr&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
+##  1   1/1/2010 Fake project A       A.1   1661
+##  2  5/12/2011 Fake project A       A.2   2094
+##  3  13/1/2010 Fake project A       A.3   2286
+##  4  1/12/2011 Fake project A       A.4    650
+##  5  21/1/2010 Fake project A       A.5    646
+##  6 12/12/2011 Fake project A       A.6    480
+##  7  31/1/2010 Fake project B       B.1   1832
+##  8  1/12/2011 Fake project B       B.2   1317
+##  9  23/1/2010 Fake project B       B.3   1720
+## 10 30/13/2011 Fake project C       C.1   -817
+## 11  11/1/2010 Fake project C       C.2    801
+## 12 21/12/2011           &lt;NA&gt;       C.3   1376
+## 13  12/1/2010 Fake project C       C.4   2642
+## 14 11/12/2011 Fake project C       C.3   1210</code></pre>
+<p>One nice thing about <code>read_csv</code> compared to <code>read.csv</code> is data is imported as a tibble rather than a data.frame. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. I’ve accidentally filled my console by forgetting to print <code>head(csv_data)</code> many times. Another nice touch is character columns are imported as characters rather than factors by default. Factors can be useful, but they are also fiddly to deal with especially for newcomers to R.</p>
 </div>
 </div>
 <div id="some-extras" class="section level2">
@@ -71,6 +68,7 @@ description: Loading the data
                      col_types = cols(
                        Date = col_date(format = &quot;%d/%m/%Y&quot;),
                        Project = col_character(),
+                       Component = col_character(),
                        Income = col_integer()
                        )
                      )
@@ -82,28 +80,28 @@ description: Loading the data
 </div>
 <div id="white-space-trimming" class="section level3">
 <h3>White space trimming</h3>
-<p><strong>TODO</strong></p>
+<p>Our made up data contains a few entries with leading or trailing whitespace characters. By default, <code>read_csv</code> will remove any trailing or leading whitespace characters, but this behaviour can be disabled by setting <code>trim_ws = FALSE</code>.</p>
 </div>
 </div>
 <div id="in-summary" class="section level2">
 <h2>In summary</h2>
 <p>The correctly formatted data is shown below. One of the dates was invalid (30/13/2011) and so an <code>NA</code> value was returned.</p>
 <pre class="r"><code>csv_data
-## # A tibble: 14 x 3
-##          Date Project  Income
-##        &lt;date&gt;   &lt;chr&gt;   &lt;int&gt;
-##  1 2010-01-01       A 1003412
-##  2 2011-12-05       A   23421
-##  3 2010-01-13       A 1003412
-##  4 2011-12-01       A   23421
-##  5 2010-01-21       A 1003412
-##  6 2011-12-12       A   23421
-##  7 2010-01-31       B 1003412
-##  8 2011-12-01       B   23421
-##  9 2010-01-23       B 1003412
-## 10         NA       C   23421
-## 11 2010-01-11       C 1003412
-## 12 2011-12-21    &lt;NA&gt;   23421
-## 13 2010-01-12       A 1003412
-## 14 2011-12-11       A   23421</code></pre>
+## # A tibble: 14 x 4
+##          Date        Project Component Income
+##        &lt;date&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
+##  1 2010-01-01 Fake project A       A.1   1661
+##  2 2011-12-05 Fake project A       A.2   2094
+##  3 2010-01-13 Fake project A       A.3   2286
+##  4 2011-12-01 Fake project A       A.4    650
+##  5 2010-01-21 Fake project A       A.5    646
+##  6 2011-12-12 Fake project A       A.6    480
+##  7 2010-01-31 Fake project B       B.1   1832
+##  8 2011-12-01 Fake project B       B.2   1317
+##  9 2010-01-23 Fake project B       B.3   1720
+## 10         NA Fake project C       C.1   -817
+## 11 2010-01-11 Fake project C       C.2    801
+## 12 2011-12-21           &lt;NA&gt;       C.3   1376
+## 13 2010-01-12 Fake project C       C.4   2642
+## 14 2011-12-11 Fake project C       C.3   1210</code></pre>
 </div>
