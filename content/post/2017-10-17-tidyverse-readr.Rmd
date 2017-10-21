@@ -67,7 +67,7 @@ One nice thing about `read_csv` compared to `read.csv` is data is imported as a 
 
 ### Column type specification
 
-One problem with our imported data is the Date column has been read as a string. Conveniently, `readr` allows us to specify the data type of each column using the `col_types` argument and `cols` function.
+One problem with our imported data is the Date column has been read as a string. Conveniently, `readr` allows us to specify the data type of each column using the `col_types` argument and `cols` function. A warning will be output if any of the dates are in an invalid format.
 
 ```{r message=TRUE, warning=TRUE}
 csv_data <- read_csv(file = "data/2017-10-17-data.csv",

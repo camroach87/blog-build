@@ -63,7 +63,7 @@ description: Loading the data
 <h2>Some extras</h2>
 <div id="column-type-specification" class="section level3">
 <h3>Column type specification</h3>
-<p>One problem with our imported data is the Date column has been read as a string. Conveniently, <code>readr</code> allows us to specify the data type of each column using the <code>col_types</code> argument and <code>cols</code> function.</p>
+<p>One problem with our imported data is the Date column has been read as a string. Conveniently, <code>readr</code> allows us to specify the data type of each column using the <code>col_types</code> argument and <code>cols</code> function. A warning will be output if any of the dates are in an invalid format.</p>
 <pre class="r"><code>csv_data &lt;- read_csv(file = &quot;data/2017-10-17-data.csv&quot;,
                      col_types = cols(
                        Date = col_date(format = &quot;%d/%m/%Y&quot;),
