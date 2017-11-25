@@ -10,4 +10,5 @@ Files to build blog. Based on nodejh hugo-theme-cactus-plus.
 
 ## Notes
 
-* Use `build_site()` to completely rebuild site. I \*think\* that `serve_site()` uses cached versions of the pages? Seems like sometimes not everything gets updated/deleted if I only run `serve_site()`. Need to double-check documentation.
+* Deleting a post in blog-build does not delete it from public folder. Need to manually delete all files and then rebuild site. Be careful not to delete the git files!
+* Don't understand difference between `blog_build` and `serve_site`.
