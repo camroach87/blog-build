@@ -1,0 +1,79 @@
+---
+title: "5 minute tidyverse"
+author: "Cameron Roach"
+date: 2017-11-25T10:23:00-00:00
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse"]
+description: A series of blog posts introducing `R`'s tidyverse - a fantastic framework for shaping, exploring and visualising data.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	collapse = TRUE
+)
+
+rm(list=ls())
+
+require(tidyverse)
+require(lubridate)
+require(knitr)
+```
+
+This series of blog posts give a brief introduction to `R`'s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled in a [geometrically pleasing hex formation](https://twitter.com/nj_tierney/status/918377044634886144).
+
+```{r tidyverse-stickers, echo=FALSE, fig.cap="I'll never stop."}
+include_graphics("/img/tidyverse-stickers.jpg")
+```
+
+The hope is that by breaking the key packages into 5 minute tutorials a beginner should quickly pick up the main capabilities of each. Many excellent resources detailing the finer points of tidyverse already exist (see [R for Data Science](http://r4ds.had.co.nz/) and the [tidyverse documentation](https://www.tidyverse.org/packages/)) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner may imbibe from such a brief introduction. Results first, details later is the guiding principle here.
+
+The series will be broken into 5 tutorials focusing on:
+
+1. Reading data into `R` using `readr` and `tibble`.
+2. Reshaping data into long or wide data formats with `tidyr`.
+3. Manipulating or summarising data columns using `dplyr`.
+4. Plotting results with `ggplot2`.
+5. (Maybe) doing some modelling with `purrr`/`broom`/`modelr`/`validatr`.
+
+I say _maybe_ because modelling with tidyverse isn't quite as easy as the other tasks. I've had a go at trying to improve this ([`validatr`](https://github.com/camroach87/validatr)), but that still needs a lot of work. I'm not sure if I'm capable of producing a 5-minute tutorial on modelling with tidyverse and so it might be best left to a longer more detailed post.
+
+<!-- The tutorials will not be limited to the above packages. A few others are introduced, the main one being `lubridate` - a fantastic package for dealing with dates and times. -->
+
+A silly csv I threw together (available [here](https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/2017-10-17-data.csv)) will be used throughout. The data is shown below in Table \@ref(tab:tidyverse-data). Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.
+
+```{r tidyverse-data, echo=FALSE}
+read_csv("./data/5-min-tidyverse-data.csv",
+         trim_ws = FALSE) %>% 
+  kable(caption = "A silly csv file I threw together")
+```
+
+My hope is that by the end of this series, somebody with very little `R` programming experience should be able to look at the following code chunks and know exactly what is going on.
+
+```{r example-1}
+read_csv("./data/5-min-tidyverse-data.csv") %>% 
+  group_by(Project) %>% 
+  summarise(Income = sum(Income)) %>% 
+  filter(!is.na(Project)) %>% 
+  ggplot(aes(x = Project, y = Income, fill = Project)) +
+  geom_col() + 
+  labs(title = "Income across projects",
+       subtitle = "Using a daft data set") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+```{r example-2}
+read_csv("./data/5-min-tidyverse-data.csv") %>% 
+  mutate(Date = dmy(Date),
+         Year = year(Date)) %>% 
+  filter(!is.na(Project),
+         !is.na(Year)) %>% 
+  group_by(Project, Year) %>% 
+  summarise(Income = mean(Income)) %>% 
+  select(Project, Year, Income) %>% 
+  spread(Project, Income) %>% 
+  kable(caption = "Average income per component for important business projects.")
+```
+

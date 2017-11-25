@@ -1,0 +1,174 @@
+---
+title: "5 minute tidyverse"
+author: "Cameron Roach"
+date: 2017-11-25T10:23:00-00:00
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse"]
+description: A series of blog posts introducing `R`'s tidyverse - a fantastic framework for shaping, exploring and visualising data.
+---
+
+
+
+<p>This series of blog posts give a brief introduction to <code>R</code>’s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled in a <a href="https://twitter.com/nj_tierney/status/918377044634886144">geometrically pleasing hex formation</a>.</p>
+<div class="figure"><span id="fig:tidyverse-stickers"></span>
+<img src="/img/tidyverse-stickers.jpg" alt="I'll never stop."  />
+<p class="caption">
+Figure 1: I’ll never stop.
+</p>
+</div>
+<p>The hope is that by breaking the key packages into 5 minute tutorials a beginner should quickly pick up the main capabilities of each. Many excellent resources detailing the finer points of tidyverse already exist (see <a href="http://r4ds.had.co.nz/">R for Data Science</a> and the <a href="https://www.tidyverse.org/packages/">tidyverse documentation</a>) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner may imbibe from such a brief introduction. Results first, details later is the guiding principle here.</p>
+<p>The series will be broken into 5 tutorials focusing on:</p>
+<ol style="list-style-type: decimal">
+<li>Reading data into <code>R</code> using <code>readr</code> and <code>tibble</code>.</li>
+<li>Reshaping data into long or wide data formats with <code>tidyr</code>.</li>
+<li>Manipulating or summarising data columns using <code>dplyr</code>.</li>
+<li>Plotting results with <code>ggplot2</code>.</li>
+<li>(Maybe) doing some modelling with <code>purrr</code>/<code>broom</code>/<code>modelr</code>/<code>validatr</code>.</li>
+</ol>
+<p>I say <em>maybe</em> because modelling with tidyverse isn’t quite as easy as the other tasks. I’ve had a go at trying to improve this (<a href="https://github.com/camroach87/validatr"><code>validatr</code></a>), but that still needs a lot of work. I’m not sure if I’m capable of producing a 5-minute tutorial on modelling with tidyverse and so it might be best left to a longer more detailed post.</p>
+<!-- The tutorials will not be limited to the above packages. A few others are introduced, the main one being `lubridate` - a fantastic package for dealing with dates and times. -->
+<p>A silly csv I threw together (available <a href="https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/2017-10-17-data.csv">here</a>) will be used throughout. The data is shown below in Table <a href="#tab:tidyverse-data">1</a>. Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.</p>
+<table>
+<caption><span id="tab:tidyverse-data">Table 1: </span>A silly csv file I threw together</caption>
+<thead>
+<tr class="header">
+<th align="left">Date</th>
+<th align="left">Project</th>
+<th align="left">Component</th>
+<th align="right">Income</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1/1/2010</td>
+<td align="left">Fake project A</td>
+<td align="left">A.1</td>
+<td align="right">1661</td>
+</tr>
+<tr class="even">
+<td align="left">5/12/2011</td>
+<td align="left">Fake project A</td>
+<td align="left">A.2</td>
+<td align="right">2094</td>
+</tr>
+<tr class="odd">
+<td align="left">13/1/2010</td>
+<td align="left">Fake project A</td>
+<td align="left">A.3</td>
+<td align="right">2286</td>
+</tr>
+<tr class="even">
+<td align="left">1/12/2011</td>
+<td align="left">Fake project A</td>
+<td align="left">A.4</td>
+<td align="right">650</td>
+</tr>
+<tr class="odd">
+<td align="left">21/1/2010</td>
+<td align="left">Fake project A</td>
+<td align="left">A.5</td>
+<td align="right">646</td>
+</tr>
+<tr class="even">
+<td align="left">12/12/2011</td>
+<td align="left">Fake project A</td>
+<td align="left">A.6</td>
+<td align="right">480</td>
+</tr>
+<tr class="odd">
+<td align="left">31/1/2010</td>
+<td align="left">Fake project B</td>
+<td align="left">B.1</td>
+<td align="right">1832</td>
+</tr>
+<tr class="even">
+<td align="left">1/12/2011</td>
+<td align="left">Fake project B</td>
+<td align="left">B.2</td>
+<td align="right">1317</td>
+</tr>
+<tr class="odd">
+<td align="left">23/1/2010</td>
+<td align="left">Fake project B</td>
+<td align="left">B.3</td>
+<td align="right">1720</td>
+</tr>
+<tr class="even">
+<td align="left">30/13/2011</td>
+<td align="left">Fake project C</td>
+<td align="left">C.1</td>
+<td align="right">-817</td>
+</tr>
+<tr class="odd">
+<td align="left">11/1/2010</td>
+<td align="left">Fake project C</td>
+<td align="left">C.2</td>
+<td align="right">801</td>
+</tr>
+<tr class="even">
+<td align="left">21/12/2011</td>
+<td align="left">NA</td>
+<td align="left">C.3</td>
+<td align="right">1376</td>
+</tr>
+<tr class="odd">
+<td align="left">12/1/2010</td>
+<td align="left">Fake project C</td>
+<td align="left">C.4</td>
+<td align="right">2642</td>
+</tr>
+<tr class="even">
+<td align="left">11/12/2011</td>
+<td align="left">Fake project C</td>
+<td align="left">C.3</td>
+<td align="right">1210</td>
+</tr>
+</tbody>
+</table>
+<p>My hope is that by the end of this series, somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know exactly what is going on.</p>
+<pre class="r"><code>read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
+  group_by(Project) %&gt;% 
+  summarise(Income = sum(Income)) %&gt;% 
+  filter(!is.na(Project)) %&gt;% 
+  ggplot(aes(x = Project, y = Income, fill = Project)) +
+  geom_col() + 
+  labs(title = &quot;Income across projects&quot;,
+       subtitle = &quot;Using a daft data set&quot;) +
+  theme_bw() +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<p><img src="/post/2017-11-25-tidyverse_files/figure-html/example-1-1.png" width="672" /></p>
+<pre class="r"><code>read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
+  mutate(Date = dmy(Date),
+         Year = year(Date)) %&gt;% 
+  filter(!is.na(Project),
+         !is.na(Year)) %&gt;% 
+  group_by(Project, Year) %&gt;% 
+  summarise(Income = mean(Income)) %&gt;% 
+  select(Project, Year, Income) %&gt;% 
+  spread(Project, Income) %&gt;% 
+  kable(caption = &quot;Average income per component for important business projects.&quot;)</code></pre>
+<table>
+<caption><span id="tab:example-2">Table 2: </span>Average income per component for important business projects.</caption>
+<thead>
+<tr class="header">
+<th align="right">Year</th>
+<th align="right">Fake project A</th>
+<th align="right">Fake project B</th>
+<th align="right">Fake project C</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">2010</td>
+<td align="right">1531.000</td>
+<td align="right">1776</td>
+<td align="right">1721.5</td>
+</tr>
+<tr class="even">
+<td align="right">2011</td>
+<td align="right">1074.667</td>
+<td align="right">1317</td>
+<td align="right">1210.0</td>
+</tr>
+</tbody>
+</table>
