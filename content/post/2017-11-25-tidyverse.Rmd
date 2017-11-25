@@ -89,4 +89,4 @@ read_csv("./data/5-min-tidyverse-data.csv") %>%
 
 # Final thought
 
-Much of the work I do in `R` is just reusing these functions again and again in slightly different ways. Had I known of this workflow when I first started programming in `R` many hours of tedious and confusing data wrangling could have been avoided. From someone that learnt the hard way - mastering the basics of tidyverse will help you to produce cleaner code and enjoy greater productivity.
+Much of the work I do in `R` is just reusing these functions again and again in slightly different ways. Had I known of this workflow when I first started programming in `R` many hours of tedious and confusing data wrangling could have been avoided. From someone that learnt the hard way - mastering the basics of tidyverse will help you produce cleaner code and enjoy greater productivity.
