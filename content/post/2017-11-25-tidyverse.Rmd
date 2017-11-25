@@ -27,7 +27,7 @@ knitr::include_graphics("/images/tidyverse-stickers.jpg")
 
 # Structure
 
-Each of the key tidyverse packages will be introduced in separate post. Each post should take at most five minutes to read. By breaking the material into five minute tutorials a beginner should quickly pick up the main capabilities of each package. Many excellent resources detailing the finer points of tidyverse already exist (see [R for Data Science](http://r4ds.had.co.nz/) and the [tidyverse documentation](https://www.tidyverse.org/packages/)) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner can learn from such a brief introduction. Results first, details later is the guiding principle here.
+Each of the key tidyverse packages will be introduced in a separate post. Each post should take at most five minutes to read. By breaking the material into five minute tutorials a beginner should quickly pick up the main capabilities of each package. Many excellent resources detailing the finer points of tidyverse already exist (see [R for Data Science](http://r4ds.had.co.nz/) and the [tidyverse documentation](https://www.tidyverse.org/packages/)) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner can learn from such a brief introduction. Results first, details later is the guiding principle here.
 
 The series will be broken into 5 tutorials focusing on:
 
