@@ -9,14 +9,16 @@ description: A series of blog posts introducing `R`'s tidyverse - a fantastic fr
 
 
 
-<p>This series of blog posts give a brief introduction to <code>R</code>’s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled in a <a href="https://twitter.com/nj_tierney/status/918377044634886144">geometrically pleasing hex formation</a>.</p>
+<p>This series of blog posts gives a brief introduction to <code>R</code>’s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled into a <a href="https://twitter.com/nj_tierney/status/918377044634886144">geometrically pleasing hex formation</a>.</p>
 <div class="figure"><span id="fig:tidyverse-stickers"></span>
 <img src="/img/tidyverse-stickers.jpg" alt="I'll never stop."  />
 <p class="caption">
 Figure 1: I’ll never stop.
 </p>
 </div>
-<p>The hope is that by breaking the key packages into 5 minute tutorials a beginner should quickly pick up the main capabilities of each. Many excellent resources detailing the finer points of tidyverse already exist (see <a href="http://r4ds.had.co.nz/">R for Data Science</a> and the <a href="https://www.tidyverse.org/packages/">tidyverse documentation</a>) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner may imbibe from such a brief introduction. Results first, details later is the guiding principle here.</p>
+<div id="structure" class="section level1">
+<h1>Structure</h1>
+<p>Each of the key tidyverse packages will be introduced in separate post. Each post should take at most five minutes to read. By breaking the material into five minute tutorials a beginner should quickly pick up the main capabilities of each package. Many excellent resources detailing the finer points of tidyverse already exist (see <a href="http://r4ds.had.co.nz/">R for Data Science</a> and the <a href="https://www.tidyverse.org/packages/">tidyverse documentation</a>) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner can learn from such a brief introduction. Results first, details later is the guiding principle here.</p>
 <p>The series will be broken into 5 tutorials focusing on:</p>
 <ol style="list-style-type: decimal">
 <li>Reading data into <code>R</code> using <code>readr</code> and <code>tibble</code>.</li>
@@ -26,10 +28,10 @@ Figure 1: I’ll never stop.
 <li>(Maybe) doing some modelling with <code>purrr</code>/<code>broom</code>/<code>modelr</code>/<code>validatr</code>.</li>
 </ol>
 <p>I say <em>maybe</em> because modelling with tidyverse isn’t quite as easy as the other tasks. I’ve had a go at trying to improve this (<a href="https://github.com/camroach87/validatr"><code>validatr</code></a>), but that still needs a lot of work. I’m not sure if I’m capable of producing a 5-minute tutorial on modelling with tidyverse and so it might be best left to a longer more detailed post.</p>
-<!-- The tutorials will not be limited to the above packages. A few others are introduced, the main one being `lubridate` - a fantastic package for dealing with dates and times. -->
-<p>A silly csv I threw together (available <a href="https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/2017-10-17-data.csv">here</a>) will be used throughout. The data is shown below in Table <a href="#tab:tidyverse-data">1</a>. Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.</p>
+<p>The tutorials will not be limited to the above packages. A few others are introduced, the main one being <code>lubridate</code> - a fantastic package for dealing with dates and times. I might also briefly touch on <code>knitr</code> and <code>magrittr</code>.</p>
+<p>A silly csv I threw together (available <a href="https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/5-min-tidyverse-data.csv">here</a>) will be used throughout. The data is shown below in Table <a href="#tab:tidyverse-data">1</a>. Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.</p>
 <table>
-<caption><span id="tab:tidyverse-data">Table 1: </span>A silly csv file I threw together</caption>
+<caption><span id="tab:tidyverse-data">Table 1: </span>A silly csv file I threw together.</caption>
 <thead>
 <tr class="header">
 <th align="left">Date</th>
@@ -125,8 +127,13 @@ Figure 1: I’ll never stop.
 </tr>
 </tbody>
 </table>
-<p>My hope is that by the end of this series, somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know exactly what is going on.</p>
-<pre class="r"><code>read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
+</div>
+<div id="goal" class="section level1">
+<h1>Goal</h1>
+<p>My hope is that by the end of this series, somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to <em>produce</em> code to a similar standard.</p>
+<pre class="r"><code>require(tidyverse)
+
+read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
   group_by(Project) %&gt;% 
   summarise(Income = sum(Income)) %&gt;% 
   filter(!is.na(Project)) %&gt;% 
@@ -136,8 +143,16 @@ Figure 1: I’ll never stop.
        subtitle = &quot;Using a daft data set&quot;) +
   theme_bw() +
   theme(legend.position = &quot;none&quot;)</code></pre>
-<p><img src="/post/2017-11-25-tidyverse_files/figure-html/example-1-1.png" width="672" /></p>
-<pre class="r"><code>read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
+<div class="figure"><span id="fig:example-1"></span>
+<img src="/post/2017-11-25-tidyverse_files/figure-html/example-1-1.png" alt="A ggplot2 graphic." width="672" />
+<p class="caption">
+Figure 2: A ggplot2 graphic.
+</p>
+</div>
+<pre class="r"><code>require(tidyverse)
+require(lubridate)
+
+read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
   mutate(Date = dmy(Date),
          Year = year(Date)) %&gt;% 
   filter(!is.na(Project),
@@ -146,9 +161,10 @@ Figure 1: I’ll never stop.
   summarise(Income = mean(Income)) %&gt;% 
   select(Project, Year, Income) %&gt;% 
   spread(Project, Income) %&gt;% 
-  kable(caption = &quot;Average income per component for important business projects.&quot;)</code></pre>
+  mutate_if(is.numeric, round, 0) %&gt;% 
+  knitr::kable(caption = &quot;Average income per component.&quot;)</code></pre>
 <table>
-<caption><span id="tab:example-2">Table 2: </span>Average income per component for important business projects.</caption>
+<caption><span id="tab:example-2">Table 2: </span>Average income per component.</caption>
 <thead>
 <tr class="header">
 <th align="right">Year</th>
@@ -160,15 +176,20 @@ Figure 1: I’ll never stop.
 <tbody>
 <tr class="odd">
 <td align="right">2010</td>
-<td align="right">1531.000</td>
+<td align="right">1531</td>
 <td align="right">1776</td>
-<td align="right">1721.5</td>
+<td align="right">1722</td>
 </tr>
 <tr class="even">
 <td align="right">2011</td>
-<td align="right">1074.667</td>
+<td align="right">1075</td>
 <td align="right">1317</td>
-<td align="right">1210.0</td>
+<td align="right">1210</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div id="final-thought" class="section level1">
+<h1>Final thought</h1>
+<p>Much of the work I do in <code>R</code> is just reusing these functions again and again in slightly different ways. Had I known of this workflow when I first started programming in <code>R</code> many hours of tedious and confusing data wrangling could have been avoided. From someone that learnt the hard way - mastering the basics of tidyverse will help you to produce cleaner code and enjoy greater productivity.</p>
+</div>

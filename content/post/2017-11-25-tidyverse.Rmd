@@ -17,17 +17,17 @@ knitr::opts_chunk$set(
 rm(list=ls())
 
 require(tidyverse)
-require(lubridate)
-require(knitr)
 ```
 
-This series of blog posts give a brief introduction to `R`'s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled in a [geometrically pleasing hex formation](https://twitter.com/nj_tierney/status/918377044634886144).
+This series of blog posts gives a brief introduction to `R`'s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled into a [geometrically pleasing hex formation](https://twitter.com/nj_tierney/status/918377044634886144).
 
 ```{r tidyverse-stickers, echo=FALSE, fig.cap="I'll never stop."}
-include_graphics("/img/tidyverse-stickers.jpg")
+knitr::include_graphics("/img/tidyverse-stickers.jpg")
 ```
 
-The hope is that by breaking the key packages into 5 minute tutorials a beginner should quickly pick up the main capabilities of each. Many excellent resources detailing the finer points of tidyverse already exist (see [R for Data Science](http://r4ds.had.co.nz/) and the [tidyverse documentation](https://www.tidyverse.org/packages/)) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner may imbibe from such a brief introduction. Results first, details later is the guiding principle here.
+# Structure
+
+Each of the key tidyverse packages will be introduced in separate post. Each post should take at most five minutes to read. By breaking the material into five minute tutorials a beginner should quickly pick up the main capabilities of each package. Many excellent resources detailing the finer points of tidyverse already exist (see [R for Data Science](http://r4ds.had.co.nz/) and the [tidyverse documentation](https://www.tidyverse.org/packages/)) and so this series will be quite shallow by comparison. However, I believe there is a lot a beginner can learn from such a brief introduction. Results first, details later is the guiding principle here.
 
 The series will be broken into 5 tutorials focusing on:
 
@@ -39,19 +39,25 @@ The series will be broken into 5 tutorials focusing on:
 
 I say _maybe_ because modelling with tidyverse isn't quite as easy as the other tasks. I've had a go at trying to improve this ([`validatr`](https://github.com/camroach87/validatr)), but that still needs a lot of work. I'm not sure if I'm capable of producing a 5-minute tutorial on modelling with tidyverse and so it might be best left to a longer more detailed post.
 
-<!-- The tutorials will not be limited to the above packages. A few others are introduced, the main one being `lubridate` - a fantastic package for dealing with dates and times. -->
+The tutorials will not be limited to the above packages. A few others are
+introduced, the main one being `lubridate` - a fantastic package for dealing
+with dates and times. I might also briefly touch on `knitr` and `magrittr`.
 
-A silly csv I threw together (available [here](https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/2017-10-17-data.csv)) will be used throughout. The data is shown below in Table \@ref(tab:tidyverse-data). Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.
+A silly csv I threw together (available [here](https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/5-min-tidyverse-data.csv)) will be used throughout. The data is shown below in Table \@ref(tab:tidyverse-data). Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.
 
 ```{r tidyverse-data, echo=FALSE}
 read_csv("./data/5-min-tidyverse-data.csv",
          trim_ws = FALSE) %>% 
-  kable(caption = "A silly csv file I threw together")
+  knitr::kable(caption = "A silly csv file I threw together.")
 ```
 
-My hope is that by the end of this series, somebody with very little `R` programming experience should be able to look at the following code chunks and know exactly what is going on.
+# Goal
 
-```{r example-1}
+My hope is that by the end of this series, somebody with very little `R` programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to _produce_ code to a similar standard.
+
+```{r example-1, fig.cap="A ggplot2 graphic."}
+require(tidyverse)
+
 read_csv("./data/5-min-tidyverse-data.csv") %>% 
   group_by(Project) %>% 
   summarise(Income = sum(Income)) %>% 
@@ -65,6 +71,9 @@ read_csv("./data/5-min-tidyverse-data.csv") %>%
 ```
 
 ```{r example-2}
+require(tidyverse)
+require(lubridate)
+
 read_csv("./data/5-min-tidyverse-data.csv") %>% 
   mutate(Date = dmy(Date),
          Year = year(Date)) %>% 
@@ -74,6 +83,10 @@ read_csv("./data/5-min-tidyverse-data.csv") %>%
   summarise(Income = mean(Income)) %>% 
   select(Project, Year, Income) %>% 
   spread(Project, Income) %>% 
-  kable(caption = "Average income per component for important business projects.")
+  mutate_if(is.numeric, round, 0) %>% 
+  knitr::kable(caption = "Average income per component.")
 ```
 
+# Final thought
+
+Much of the work I do in `R` is just reusing these functions again and again in slightly different ways. Had I known of this workflow when I first started programming in `R` many hours of tedious and confusing data wrangling could have been avoided. From someone that learnt the hard way - mastering the basics of tidyverse will help you to produce cleaner code and enjoy greater productivity.
