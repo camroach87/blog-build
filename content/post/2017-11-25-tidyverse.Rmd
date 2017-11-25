@@ -22,7 +22,7 @@ require(tidyverse)
 This series of blog posts gives a brief introduction to `R`'s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages also have stickers that may be assembled into a [geometrically pleasing hex formation](https://twitter.com/nj_tierney/status/918377044634886144).
 
 ```{r tidyverse-stickers, echo=FALSE, fig.cap="I'll never stop."}
-knitr::include_graphics("/img/tidyverse-stickers.jpg")
+knitr::include_graphics("/images/tidyverse-stickers.jpg")
 ```
 
 # Structure
