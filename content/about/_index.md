@@ -19,3 +19,11 @@ This blog focuses on  my interests in data science, forecasting and machine lear
 ### My CV...
 
 is available [here](https://github.com/camroach87/academic-cv/raw/master/cv.pdf).
+
+***
+
+### Links
+
+* [R-bloggers](https://www.r-bloggers.com/)
+* [RStudio blog](https://blog.rstudio.com/)
+* [The Unofficial Google Data Science Blog](http://www.unofficialgoogledatascience.com/)
