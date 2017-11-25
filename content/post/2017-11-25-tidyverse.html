@@ -31,7 +31,7 @@ Figure 1: I’ll never stop.
 <p>The tutorials will not be limited to the above packages. A few others are introduced, the main one being <code>lubridate</code> - a fantastic package for dealing with dates and times. I might also briefly touch on <code>knitr</code> and <code>magrittr</code>.</p>
 <p>A silly csv I threw together (available <a href="https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/5-min-tidyverse-data.csv">here</a>) will be used throughout. The data is shown below in Table <a href="#tab:tidyverse-data">1</a>. Some annoying data issues such as leading and trailing whitespaces and missing values have been introduced to make this project a little more realistic.</p>
 <table>
-<caption><span id="tab:tidyverse-data">Table 1: </span>A silly csv file I threw together.</caption>
+<caption><span id="tab:tidyverse-data">Table 1: </span>A silly data set I threw together.</caption>
 <thead>
 <tr class="header">
 <th align="left">Date</th>
@@ -130,7 +130,7 @@ Figure 1: I’ll never stop.
 </div>
 <div id="goal" class="section level1">
 <h1>Goal</h1>
-<p>My hope is that by the end of this series, somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to <em>produce</em> code to a similar standard.</p>
+<p>My hope is that by the end of this series somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to <em>produce</em> code to a similar standard.</p>
 <pre class="r"><code>require(tidyverse)
 
 read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 

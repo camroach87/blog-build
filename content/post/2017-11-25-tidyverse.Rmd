@@ -48,12 +48,12 @@ A silly csv I threw together (available [here](https://raw.githubusercontent.com
 ```{r tidyverse-data, echo=FALSE}
 read_csv("./data/5-min-tidyverse-data.csv",
          trim_ws = FALSE) %>% 
-  knitr::kable(caption = "A silly csv file I threw together.")
+  knitr::kable(caption = "A silly data set I threw together.")
 ```
 
 # Goal
 
-My hope is that by the end of this series, somebody with very little `R` programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to _produce_ code to a similar standard.
+My hope is that by the end of this series somebody with very little `R` programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to _produce_ code to a similar standard.
 
 ```{r example-1, fig.cap="A ggplot2 graphic."}
 require(tidyverse)
