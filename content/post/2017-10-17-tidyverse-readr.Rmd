@@ -50,7 +50,7 @@ You can refer to the csv file with the relative path `./data/csv_file.csv` where
 <!-- 3. Save all your R scripts and data in the project directory. -->
 <!-- 4. Use relative paths to refer to files. -->
 
-Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory, open the `.Rproj` file and run the code without path issues.
+Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory to a new location, open the `.Rproj` file and run the code without path issues.
 
 <!-- You can also easily switch projects in RStudio using the project dropdown menu and the working directory will automatically be updated. -->
 
@@ -114,7 +114,7 @@ I don't use this functionality too often, but more details can be found in the r
 
 ### White space trimming
 
-Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, `read_csv` will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled if need be by setting `trim_ws = FALSE`.
+Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, `read_csv` will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled by setting `trim_ws = FALSE` if need be.
 
 ### Headers and comments
 

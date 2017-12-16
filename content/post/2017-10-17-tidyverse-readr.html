@@ -2,7 +2,7 @@
 title: "5 minute tidyverse: readr"
 author: "Cameron Roach"
 #date: 2017-12-16T10:23:00-00:00
-date: "2017-12-16T14:02:00"
+date: "2017-12-16T14:09:00"
 categories: ["R"]
 tags: ["R", "Tutorial", "tidyverse"]
 description: Introduces loading data from csv files into R and working with RStudio projects.
@@ -30,7 +30,7 @@ description: Introduces loading data from csv files into R and working with RStu
 <!-- 2. Work with projects in RStudio. -->
 <!-- 3. Save all your R scripts and data in the project directory. -->
 <!-- 4. Use relative paths to refer to files. -->
-<p>Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory, open the <code>.Rproj</code> file and run the code without path issues.</p>
+<p>Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory to a new location, open the <code>.Rproj</code> file and run the code without path issues.</p>
 <!-- You can also easily switch projects in RStudio using the project dropdown menu and the working directory will automatically be updated. -->
 </div>
 <div id="using-readr" class="section level3">
@@ -98,7 +98,7 @@ data/5-min-tidyverse-data.csv</code></pre>
 </div>
 <div id="white-space-trimming" class="section level3">
 <h3>White space trimming</h3>
-<p>Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, <code>read_csv</code> will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled if need be by setting <code>trim_ws = FALSE</code>.</p>
+<p>Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, <code>read_csv</code> will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled by setting <code>trim_ws = FALSE</code> if need be.</p>
 </div>
 <div id="headers-and-comments" class="section level3">
 <h3>Headers and comments</h3>
