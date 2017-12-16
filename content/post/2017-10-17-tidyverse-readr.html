@@ -1,0 +1,139 @@
+---
+title: "5 minute tidyverse: readr"
+author: "Cameron Roach"
+#date: 2017-12-16T10:23:00-00:00
+date: "2017-12-16T14:02:00"
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse"]
+description: Introduces loading data from csv files into R and working with RStudio projects.
+---
+
+
+
+<p>Despite appearing fairly innocuous, loading data can be one of the most frustrating challenges when starting a data science project. Missing values, trailing commas, renegade quotes in strings and many other issues can all cause headaches when reading a csv file. I’m sure many an aspiring data scientist has been left feeling discouraged after falling at this early hurdle - I know I have.</p>
+<p>This post introduces some basics of loading data using a csv. It assumes that you’ve managed to get your data into a reasonable format without any of the above issues. I recommend viewing your csv in a text editor such as <a href="https://notepad-plus-plus.org/">Notepad++</a> or <a href="https://atom.io/">Atom</a> before attempting any coding. Be wary of excel as it can hide (<em>and often introduce</em>) problems in csv files.</p>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<p>This tutorial will use R’s <code>readr</code> package. This package contains the <code>read_csv</code> function which is similar to base R’s <code>read.csv</code> function, but with some enhancements.</p>
+</div>
+<div id="load-the-data" class="section level2">
+<h2>Load the data</h2>
+<div id="getting-your-working-directory-right" class="section level3">
+<h3>Getting your working directory right</h3>
+<p>First download and install <a href="https://www.rstudio.com/products/rstudio/">RStudio</a> and <a href="https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects">create a new project</a>. Working with projects will ensure you always have the correct working directory when running your code. The working directory is necessary as it allows you to specify relative paths to the file you wish to load. Say you have a file located at</p>
+<pre class="bash"><code>/Users/long/path/to/project/data/csv_file.csv</code></pre>
+<p>that you wish to load and your current working directory is</p>
+<pre class="bash"><code>/Users/long/path/to/project</code></pre>
+<p>You can refer to the csv file with the relative path <code>./data/csv_file.csv</code> where the <code>.</code> represents the current working directory.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> If you use a project, the working directory will automatically be set to the project directory.</p>
+<!-- A few guidelines to avoid problems: -->
+<!-- 1. Use RStudio. -->
+<!-- 2. Work with projects in RStudio. -->
+<!-- 3. Save all your R scripts and data in the project directory. -->
+<!-- 4. Use relative paths to refer to files. -->
+<p>Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory, open the <code>.Rproj</code> file and run the code without path issues.</p>
+<!-- You can also easily switch projects in RStudio using the project dropdown menu and the working directory will automatically be updated. -->
+</div>
+<div id="using-readr" class="section level3">
+<h3>Using readr</h3>
+<p>After creating your project create a <code>load_data.R</code> file and add a csv file to a data folder (example data can be downloaded <a href="https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/5-min-tidyverse-data.csv">here</a>). Your project directory should look similar to below.</p>
+<pre class="bash"><code>load_data.R
+data/5-min-tidyverse-data.csv</code></pre>
+<p>Install the <code>tidyverse</code> packages by running</p>
+<pre class="r"><code>install.packages(&quot;tidyverse&quot;)</code></pre>
+<p>Next load the <code>readr</code> package. This is a nice shortcut for loading all the tidyverse packages.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<p>Data can be loaded and assigned to a variable by running</p>
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;./data/5-min-tidyverse-data.csv&quot;)
+## Parsed with column specification:
+## cols(
+##   Date = col_character(),
+##   Project = col_character(),
+##   Component = col_character(),
+##   Income = col_integer()
+## )</code></pre>
+<p>We see from these messages that <code>read_csv</code> has determined the Date, Project and Component columns are character types whereas Income is integer. The data looks like</p>
+<pre class="r"><code>csv_data
+## # A tibble: 14 x 4
+##          Date        Project Component Income
+##         &lt;chr&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
+##  1   1/1/2010 Fake project A       A.1   1661
+##  2  5/12/2011 Fake project A       A.2   2094
+##  3  13/1/2010 Fake project A       A.3   2286
+##  4  1/12/2011 Fake project A       A.4    650
+##  5  21/1/2010 Fake project A       A.5    646
+##  6 12/12/2011 Fake project A       A.6    480
+##  7  31/1/2010 Fake project B       B.1   1832
+##  8  1/12/2011 Fake project B       B.2   1317
+##  9  23/1/2010 Fake project B       B.3   1720
+## 10 30/13/2011 Fake project C       C.1   -817
+## 11  11/1/2010 Fake project C       C.2    801
+## 12 21/12/2011           &lt;NA&gt;       C.3   1376
+## 13  12/1/2010 Fake project C       C.4   2642
+## 14 11/12/2011 Fake project C       C.3   1210</code></pre>
+<!-- One nice thing about `read_csv` compared to `read.csv` is data is imported as a tibble rather than a data frame. Tibbles and data frames function very similarly. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. Another nice touch is character columns are imported as strings rather than factors by default. Factors can be useful, but they can be fiddly to deal with especially for newcomers to R. -->
+</div>
+</div>
+<div id="some-extras" class="section level2">
+<h2>Some extras</h2>
+<div id="tibbles" class="section level3">
+<h3>Tibbles</h3>
+<p>The <code>read_csv</code> function will import your data as a tibble instead of a data frame. Tibbles and data frames are very similar but tibbles have a few nice features that make them easier to work with.</p>
+</div>
+<div id="column-type-specification" class="section level3">
+<h3>Column type specification</h3>
+<p>If we want to override the default column specification we can use the <code>col_types</code> argument and <code>cols</code> function. The example below formats the Date column as a date rather than a string. Note that one of the dates was invalid (30/13/2011) and so an <code>NA</code> value was returned.</p>
+<pre class="r"><code>csv_data &lt;- read_csv(file = &quot;data/5-min-tidyverse-data.csv&quot;,
+                     col_types = cols(
+                       Date = col_date(format = &quot;%d/%m/%Y&quot;),
+                       Project = col_character(),
+                       Component = col_character(),
+                       Income = col_integer()
+                       )
+                     )
+## Warning in rbind(names(probs), probs_f): number of columns of result is not
+## a multiple of vector length (arg 2)
+## Warning: 1 parsing failure.
+## row # A tibble: 1 x 5 col     row   col   expected     actual                            file expected   &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;      &lt;chr&gt;                           &lt;chr&gt; actual 1    10  Date valid date 30/13/2011 &#39;data/5-min-tidyverse-data.csv&#39; file # A tibble: 1 x 5</code></pre>
+<p>I don’t use this functionality too often, but more details can be found in the readr vignette (accessed by running <code>vignette(&quot;readr&quot;)</code>).</p>
+</div>
+<div id="white-space-trimming" class="section level3">
+<h3>White space trimming</h3>
+<p>Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, <code>read_csv</code> will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled if need be by setting <code>trim_ws = FALSE</code>.</p>
+</div>
+<div id="headers-and-comments" class="section level3">
+<h3>Headers and comments</h3>
+<p>If your csv doesn’t have a header you can tell <code>read_csv</code> by adding the argument <code>col_names = FALSE</code>. If there are comments in the csv file they can be ignored using the <code>comment = &quot;#&quot;</code> argument, where the string value gives the starting characters for a commented line.</p>
+</div>
+</div>
+<div id="in-summary" class="section level2">
+<h2>In summary</h2>
+<p>The correctly formatted data is shown below.</p>
+<pre class="r"><code>csv_data
+## # A tibble: 14 x 4
+##          Date        Project Component Income
+##        &lt;date&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
+##  1 2010-01-01 Fake project A       A.1   1661
+##  2 2011-12-05 Fake project A       A.2   2094
+##  3 2010-01-13 Fake project A       A.3   2286
+##  4 2011-12-01 Fake project A       A.4    650
+##  5 2010-01-21 Fake project A       A.5    646
+##  6 2011-12-12 Fake project A       A.6    480
+##  7 2010-01-31 Fake project B       B.1   1832
+##  8 2011-12-01 Fake project B       B.2   1317
+##  9 2010-01-23 Fake project B       B.3   1720
+## 10         NA Fake project C       C.1   -817
+## 11 2010-01-11 Fake project C       C.2    801
+## 12 2011-12-21           &lt;NA&gt;       C.3   1376
+## 13 2010-01-12 Fake project C       C.4   2642
+## 14 2011-12-11 Fake project C       C.3   1210</code></pre>
+</div>
+<div id="next-up" class="section level2">
+<h2>Next up</h2>
+<p>We’ll look at reshaping tibbles and data frames using <code>tidyr</code> and introduce piping using <code>magrittr</code>’s <code>%&gt;%</code> function.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>For future reference, <code>..</code> in a path represents the parent directory (i.e. moving up a folder).<a href="#fnref1">↩</a></p></li>
+</ol>
+</div>

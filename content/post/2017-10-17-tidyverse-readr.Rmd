@@ -1,0 +1,133 @@
+---
+title: "5 minute tidyverse: readr"
+author: "Cameron Roach"
+#date: 2017-12-16T10:23:00-00:00
+date: "`r format(Sys.time(), '%Y-%m-%dT%H:%M:00')`"
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse"]
+description: Introduces loading data from csv files into R and working with RStudio projects.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	collapse = TRUE
+)
+```
+
+
+Despite appearing fairly innocuous, loading data can be one of the most frustrating challenges when starting a data science project. Missing values, trailing commas, renegade quotes in strings and many other issues can all cause headaches when reading a csv file. I'm sure many an aspiring data scientist has been left feeling discouraged after falling at this early hurdle - I know I have.
+
+This post introduces some basics of loading data using a csv. It assumes that you've managed to get your data into a reasonable format without any of the above issues. I recommend viewing your csv in a text editor such as [Notepad++](https://notepad-plus-plus.org/) or [Atom](https://atom.io/) before attempting any coding. Be wary of excel as it can hide (_and often introduce_) problems in csv files.
+
+## Packages
+
+This tutorial will use R's `readr` package. This package contains the `read_csv` function which is similar to base R's `read.csv` function, but with some enhancements.
+
+## Load the data
+
+### Getting your working directory right
+
+First download and install [RStudio](https://www.rstudio.com/products/rstudio/) and [create a new project](https://support.rstudio.com/hc/en-us/articles/200526207-Using-Projects). Working with projects will ensure you always have the correct working directory when running your code. The working directory is necessary as it allows you to specify relative paths to the file you wish to load. Say you have a file located at
+
+```{bash eval=FALSE}
+/Users/long/path/to/project/data/csv_file.csv
+```
+
+that you wish to load and your current working directory is
+
+```{bash eval=FALSE}
+/Users/long/path/to/project
+```
+
+You can refer to the csv file with the relative path `./data/csv_file.csv` where the `.` represents the current working directory.^[For future reference, `..` in a path represents the parent directory (i.e. moving up a folder).] If you use a project, the working directory will automatically be set to the project directory.
+
+<!-- A few guidelines to avoid problems: -->
+
+<!-- 1. Use RStudio. -->
+<!-- 2. Work with projects in RStudio. -->
+<!-- 3. Save all your R scripts and data in the project directory. -->
+<!-- 4. Use relative paths to refer to files. -->
+
+Make a habit of storing all your files in the project directory and using relative paths. This way if you ever need to move your code you can simply copy the entire project directory, open the `.Rproj` file and run the code without path issues.
+
+<!-- You can also easily switch projects in RStudio using the project dropdown menu and the working directory will automatically be updated. -->
+
+### Using readr
+
+After creating your project create a `load_data.R` file and add a csv file to a data folder (example data can be downloaded [here](https://raw.githubusercontent.com/camroach87/blog-build/master/content/post/data/5-min-tidyverse-data.csv)). Your project directory should look similar to below.
+
+```{bash project-structure, fig.cap = "Project structure.", eval=FALSE}
+load_data.R
+data/5-min-tidyverse-data.csv
+```
+
+Install the `tidyverse` packages by running
+
+```{r install, eval=FALSE}
+install.packages("tidyverse")
+```
+
+Next load the `readr` package. This is a nice shortcut for loading all the tidyverse packages.
+
+```{r}
+library(tidyverse)
+```
+
+Data can be loaded and assigned to a variable by running
+
+```{r message=TRUE}
+csv_data <- read_csv(file = "./data/5-min-tidyverse-data.csv")
+```
+
+We see from these messages that `read_csv` has determined the Date, Project and Component columns are character types whereas Income is integer. The data looks like
+
+```{r}
+csv_data
+```
+
+<!-- One nice thing about `read_csv` compared to `read.csv` is data is imported as a tibble rather than a data frame. Tibbles and data frames function very similarly. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. Another nice touch is character columns are imported as strings rather than factors by default. Factors can be useful, but they can be fiddly to deal with especially for newcomers to R. -->
+
+## Some extras
+
+### Tibbles
+
+The `read_csv` function will import your data as a tibble instead of a data frame. Tibbles and data frames are very similar but tibbles have a few nice features that make them easier to work with.
+
+### Column type specification
+
+If we want to override the default column specification we can use the `col_types` argument and `cols` function. The example below formats the Date column as a date rather than a string. Note that one of the dates was invalid (30/13/2011) and so an `NA` value was returned.
+
+```{r message=TRUE, warning=TRUE}
+csv_data <- read_csv(file = "data/5-min-tidyverse-data.csv",
+                     col_types = cols(
+                       Date = col_date(format = "%d/%m/%Y"),
+                       Project = col_character(),
+                       Component = col_character(),
+                       Income = col_integer()
+                       )
+                     )
+```
+
+I don't use this functionality too often, but more details can be found in the readr vignette (accessed by running `vignette("readr")`).
+
+### White space trimming
+
+Our example data set contains a few entries with leading or trailing whitespace characters. Conveniently, `read_csv` will remove any trailing or leading whitespace characters by default, but this behaviour can be disabled if need be by setting `trim_ws = FALSE`.
+
+### Headers and comments
+
+If your csv doesn't have a header you can tell `read_csv` by adding the argument `col_names = FALSE`. If there are comments in the csv file they can be ignored using the `comment = "#"` argument, where the string value gives the starting characters for a commented line.
+
+## In summary
+
+The correctly formatted data is shown below.
+
+```{r}
+csv_data
+```
+
+## Next up
+
+We'll look at reshaping tibbles and data frames using `tidyr` and introduce piping using `magrittr`'s `%>%` function.
