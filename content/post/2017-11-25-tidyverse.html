@@ -131,7 +131,7 @@ Figure 1: I’ll never stop.
 <div id="goal" class="section level1">
 <h1>Goal</h1>
 <p>My hope is that by the end of this series somebody with very little <code>R</code> programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to <em>produce</em> code to a similar standard.</p>
-<pre class="r"><code>require(tidyverse)
+<pre class="r"><code>library(tidyverse)
 
 read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
   group_by(Project) %&gt;% 
@@ -149,8 +149,8 @@ read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;%
 Figure 2: A ggplot2 graphic.
 </p>
 </div>
-<pre class="r"><code>require(tidyverse)
-require(lubridate)
+<pre class="r"><code>library(tidyverse)
+library(lubridate)
 
 read_csv(&quot;./data/5-min-tidyverse-data.csv&quot;) %&gt;% 
   mutate(Date = dmy(Date),

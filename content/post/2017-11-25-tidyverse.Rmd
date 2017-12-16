@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 rm(list=ls())
 
-require(tidyverse)
+library(tidyverse)
 ```
 
 This series of blog posts gives a brief introduction to `R`'s tidyverse. The tidyverse is a fantastic framework for shaping, exploring and visualising data. Consistent syntax, intuitive behaviour and excellent performance are the main reasons to learn this set of tools. Furthermore, tidyverse packages have stickers that may be assembled into a [geometrically pleasing hex formation](https://twitter.com/nj_tierney/status/918377044634886144).
@@ -56,7 +56,7 @@ read_csv("./data/5-min-tidyverse-data.csv",
 My hope is that by the end of this series somebody with very little `R` programming experience should be able to look at the following code chunks and know what is going on. Furthermore, by focusing on only the most important and useful functions in each package a beginner should be able to _produce_ code to a similar standard.
 
 ```{r example-1, fig.cap="A ggplot2 graphic."}
-require(tidyverse)
+library(tidyverse)
 
 read_csv("./data/5-min-tidyverse-data.csv") %>% 
   group_by(Project) %>% 
@@ -71,8 +71,8 @@ read_csv("./data/5-min-tidyverse-data.csv") %>%
 ```
 
 ```{r example-2}
-require(tidyverse)
-require(lubridate)
+library(tidyverse)
+library(lubridate)
 
 read_csv("./data/5-min-tidyverse-data.csv") %>% 
   mutate(Date = dmy(Date),
