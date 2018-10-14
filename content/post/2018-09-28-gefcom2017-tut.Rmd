@@ -126,7 +126,7 @@ elec_df %>%
 
 I'm only fitting one model with an L1 penalty of 50 for each zone. You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning.
 
-Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid issues with XGBoost which automatically does parallel processing when the `nthread` argument is not set.
+Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid issues with XGBoost which automatically does parallel processing when the `nthread` argument is not set. I prefer using XGBoost's parallelisation rather than `caret`'s as I found myself running into RAM usage issues with `caret`.
 
 ```{r}
 xgb_ctrl <- trainControl(
