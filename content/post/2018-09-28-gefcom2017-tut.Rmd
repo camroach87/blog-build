@@ -62,7 +62,7 @@ If you already have your data in an appropriate format (see table below) and you
 
 ### Initial structure
 
-Data can be downloaded from __TODO__. This is a cleaned version of the data used in the competition. Ensure you have your data in a tidy format as shown below. If you only have one temperature variable that is fine.
+Data can be downloaded from [here](https://github.com/camroach87/camroach87.github.io/blob/master/post/data/2018-09-28-gefcom2017-tut.csv). This is a cleaned version of the data used in the competition. Ensure you have your data in a tidy format as shown below. If you only have one temperature variable that is fine.
 
 ```{r}
 library(tidyverse)
