@@ -168,19 +168,21 @@ elec_df <- elec_df %>%
 
 Now that we have fit our demand models we need to create weather and residual simulations. The weather simulations will be fed into the demand model to predict the expected demand. Our goal is to create demand simulations so we also need to add residuals back in (or we are only simulating the conditional mean). So the final step is to add residual simulations to the expected demand to create true demand simulations.
 
-### Weather simulations
+Unfortunately - there's a lot of code refactoring in the package that I need to do! I'll update this post asap with a simple approach to weather simulation and hierarchical reconciliation.
 
-```{r}
-# elec_df %>% 
-#   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start))
-```
+<!-- ### Weather simulations -->
 
-### Residual resampling
+<!-- ```{r} -->
+<!-- # elec_df %>%  -->
+<!-- #   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start)) -->
+<!-- ``` -->
 
-```{r}
+<!-- ### Residual resampling -->
 
-```
+<!-- ```{r} -->
+
+<!-- ``` -->
 
 
-## Hierarchical reconciliation
+<!-- ## Hierarchical reconciliation -->
 
