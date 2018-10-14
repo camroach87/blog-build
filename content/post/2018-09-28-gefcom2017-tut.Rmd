@@ -19,6 +19,8 @@ rm(list=ls())
 ```
 
 
+__Caveat Emptor!:__ This is a _work in progress_! I'm refactoring the original code I wrote. Trying to find a nice balance between wrapping functions up in the `gefcom2017` package and using existing R packages such as `purrr`. This post has been uploaded early so I can include a link in the paper.
+
 ## Introduction
 
 This post shows how to implement the model I propose in the paper "Reconciled boosted models for GEFCom2017 hierarchical probabilistic load forecasting".
@@ -169,8 +171,8 @@ Now that we have fit our demand models we need to create weather and residual si
 ### Weather simulations
 
 ```{r}
-elec_df %>% 
-  mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start))
+# elec_df %>% 
+#   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start))
 ```
 
 ### Residual resampling
