@@ -1,11 +1,11 @@
 ---
-title: "My GEFCom2017 paper"
+title: "GEFCom2017 tutorial: part 1"
 author: "Cameron Roach"
 #date: 2017-12-16T10:23:00-00:00
 date: "`r format(Sys.time(), '%Y-%m-%dT%H:%M:00')`"
 categories: ["R"]
 tags: ["R", "Tutorial", "Forecasting", "Electricity"]
-description: Tutorial on implementing my GEFCom2017 model entry.
+description: Part 1 of a tutorial on implementing my GEFCom2017 model entry for probabilistic forecasts in a hierarchical setting. Here we discuss data structure, feature generation and fitting the models.
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +19,7 @@ rm(list=ls())
 ```
 
 
-__Caveat Emptor!:__ This is a _work in progress_! I'm refactoring the original code I wrote. Trying to find a nice balance between wrapping functions up in the `gefcom2017` package and using existing R packages such as `purrr`. This post has been uploaded early so I can include a link in the paper.
+__Caveat Emptor!:__ This is a _work in progress_! I'm refactoring the original code I wrote. Trying to find a nice balance between wrapping functions up in my [`gefcom2017`](https://github.com/camroach87/gefcom2017) package and using existing R packages such as `purrr`. This post has been uploaded early so I can include a link in the paper.
 
 ## Introduction
 

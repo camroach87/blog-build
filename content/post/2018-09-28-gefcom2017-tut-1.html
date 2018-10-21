@@ -1,0 +1,3579 @@
+---
+title: "GEFCom2017 tutorial: part 1"
+author: "Cameron Roach"
+#date: 2017-12-16T10:23:00-00:00
+date: "2018-10-21T00:49:00"
+categories: ["R"]
+tags: ["R", "Tutorial", "Forecasting", "Electricity"]
+description: Part 1 of a tutorial on implementing my GEFCom2017 model entry for probabilistic forecasts in a hierarchical setting. Here we discuss data structure, feature generation and fitting the models.
+---
+
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
+
+
+<p><strong>Caveat Emptor!:</strong> This is a <em>work in progress</em>! I’m refactoring the original code I wrote. Trying to find a nice balance between wrapping functions up in my <a href="https://github.com/camroach87/gefcom2017"><code>gefcom2017</code></a> package and using existing R packages such as <code>purrr</code>. This post has been uploaded early so I can include a link in the paper.</p>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This post shows how to implement the model I propose in the paper “Reconciled boosted models for GEFCom2017 hierarchical probabilistic load forecasting”.</p>
+<p>Before starting, make sure you have the following packages installed:</p>
+<ul>
+<li><code>tidyverse</code></li>
+<li><code>lubridate</code></li>
+<li><code>caret</code></li>
+<li><code>gefcom2017</code>.</li>
+</ul>
+<p>To install the <code>gefcom2017</code> package run:</p>
+<pre class="r"><code>install.packages(&quot;devtools&quot;)
+devtools::install_github(&quot;camroach87/gefcom2017&quot;)</code></pre>
+<p>We will also be using the <code>xgboost</code> package, but <code>caret</code> should automatically install this when we fit models.</p>
+</div>
+<div id="inputs" class="section level2">
+<h2>Inputs</h2>
+<p>We define some important dates. These will be needed when calculating trends and forecasts.</p>
+<pre class="r"><code>library(lubridate)
+
+fcst_start_dt &lt;- dmy_hms(&quot;1/6/2016 00:00:00&quot;)
+fcst_end_dt &lt;- dmy_hms(&quot;1/7/2016 00:00:00&quot;)
+hist_start_dt &lt;- dmy_hms(&quot;1/5/2016 00:00:00&quot;)
+hist_end_dt &lt;- dmy_hms(&quot;1/6/2016 00:00:00&quot;)</code></pre>
+</div>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<p>If you already have your data in an appropriate format (see table below) and you do not want to use the same predictors that I have you can skip ahead to fitting the model.</p>
+<div id="initial-structure" class="section level3">
+<h3>Initial structure</h3>
+<p>Data can be downloaded from <a href="https://github.com/camroach87/camroach87.github.io/blob/master/post/data/2018-09-28-gefcom2017-tut.csv">here</a>. This is a cleaned version of the data used in the competition. Ensure you have your data in a tidy format as shown below. If you only have one temperature variable that is fine.</p>
+<pre class="r"><code>library(tidyverse)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+library(caret)
+library(gefcom2017)
+
+elec_df &lt;- read_csv(&quot;data/2018-09-28-gefcom2017-tut.csv&quot;)
+
+elec_df %&gt;% 
+  head() %&gt;% 
+  kable() %&gt;% 
+  kable_styling()</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+date
+</th>
+<th style="text-align:right;">
+hour
+</th>
+<th style="text-align:left;">
+zone
+</th>
+<th style="text-align:right;">
+demand
+</th>
+<th style="text-align:right;">
+dry_bulb
+</th>
+<th style="text-align:right;">
+dew_pnt
+</th>
+<th style="text-align:left;">
+holiday_flag
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2296.953
+</td>
+<td style="text-align:right;">
+47
+</td>
+<td style="text-align:right;">
+32
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2181.977
+</td>
+<td style="text-align:right;">
+46
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2122.983
+</td>
+<td style="text-align:right;">
+46
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2095.471
+</td>
+<td style="text-align:right;">
+46
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2102.925
+</td>
+<td style="text-align:right;">
+45
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:left;">
+CT
+</td>
+<td style="text-align:right;">
+2147.457
+</td>
+<td style="text-align:right;">
+45
+</td>
+<td style="text-align:right;">
+36
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="feature-engineering" class="section level3">
+<h3>Feature engineering</h3>
+<p>Date time, day of week and other features are added.</p>
+<pre class="r"><code>elec_df &lt;- elec_df %&gt;% 
+  mutate(dt = ymd_h(paste(date, hour)),
+         day_of_week = wday(dt),
+         day_of_year = yday(dt))</code></pre>
+<p>Our trend is based off the <code>hist_start_date</code> variable. While the actual start date for each zone’s historical data may differ, as long as we are consistent in using this basis when predicting this will be fine.</p>
+<pre class="r"><code>elec_df &lt;- elec_df %&gt;% 
+  mutate(trend = as.numeric(dt - hist_start_dt))</code></pre>
+<p>We now need to add lags to our data frame. The <code>get_lagged_vars</code> function allows us to pass a vector of integers with the required lags and returns a data frame with new lag columns. We group and nest the data frame by zones to prevent lags including values from other zones.</p>
+<pre class="r"><code>elec_df &lt;- elec_df %&gt;%
+  group_by(zone) %&gt;% 
+  nest() %&gt;% 
+  mutate(data = map(data, get_lagged_vars,
+                    variables = c(&quot;dry_bulb&quot;, &quot;dew_pnt&quot;), lags = 1:72))</code></pre>
+<p>Here is how the data should look for one of the zones when we unnest it.</p>
+<pre class="r"><code>elec_df %&gt;% 
+  filter(zone == &quot;SEMASS&quot;) %&gt;% 
+  unnest() %&gt;% 
+  head() %&gt;% 
+  kable() %&gt;% 
+  kable_styling() %&gt;%
+  scroll_box(width = &quot;100%&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 5px; overflow-x: scroll; width:100%; ">
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+zone
+</th>
+<th style="text-align:left;">
+date
+</th>
+<th style="text-align:right;">
+hour
+</th>
+<th style="text-align:right;">
+demand
+</th>
+<th style="text-align:right;">
+dry_bulb
+</th>
+<th style="text-align:right;">
+dew_pnt
+</th>
+<th style="text-align:left;">
+holiday_flag
+</th>
+<th style="text-align:left;">
+dt
+</th>
+<th style="text-align:right;">
+day_of_week
+</th>
+<th style="text-align:right;">
+day_of_year
+</th>
+<th style="text-align:right;">
+trend
+</th>
+<th style="text-align:right;">
+dry_bulb_lag1
+</th>
+<th style="text-align:right;">
+dry_bulb_lag2
+</th>
+<th style="text-align:right;">
+dry_bulb_lag3
+</th>
+<th style="text-align:right;">
+dry_bulb_lag4
+</th>
+<th style="text-align:right;">
+dry_bulb_lag5
+</th>
+<th style="text-align:right;">
+dry_bulb_lag6
+</th>
+<th style="text-align:right;">
+dry_bulb_lag7
+</th>
+<th style="text-align:right;">
+dry_bulb_lag8
+</th>
+<th style="text-align:right;">
+dry_bulb_lag9
+</th>
+<th style="text-align:right;">
+dry_bulb_lag10
+</th>
+<th style="text-align:right;">
+dry_bulb_lag11
+</th>
+<th style="text-align:right;">
+dry_bulb_lag12
+</th>
+<th style="text-align:right;">
+dry_bulb_lag13
+</th>
+<th style="text-align:right;">
+dry_bulb_lag14
+</th>
+<th style="text-align:right;">
+dry_bulb_lag15
+</th>
+<th style="text-align:right;">
+dry_bulb_lag16
+</th>
+<th style="text-align:right;">
+dry_bulb_lag17
+</th>
+<th style="text-align:right;">
+dry_bulb_lag18
+</th>
+<th style="text-align:right;">
+dry_bulb_lag19
+</th>
+<th style="text-align:right;">
+dry_bulb_lag20
+</th>
+<th style="text-align:right;">
+dry_bulb_lag21
+</th>
+<th style="text-align:right;">
+dry_bulb_lag22
+</th>
+<th style="text-align:right;">
+dry_bulb_lag23
+</th>
+<th style="text-align:right;">
+dry_bulb_lag24
+</th>
+<th style="text-align:right;">
+dry_bulb_lag25
+</th>
+<th style="text-align:right;">
+dry_bulb_lag26
+</th>
+<th style="text-align:right;">
+dry_bulb_lag27
+</th>
+<th style="text-align:right;">
+dry_bulb_lag28
+</th>
+<th style="text-align:right;">
+dry_bulb_lag29
+</th>
+<th style="text-align:right;">
+dry_bulb_lag30
+</th>
+<th style="text-align:right;">
+dry_bulb_lag31
+</th>
+<th style="text-align:right;">
+dry_bulb_lag32
+</th>
+<th style="text-align:right;">
+dry_bulb_lag33
+</th>
+<th style="text-align:right;">
+dry_bulb_lag34
+</th>
+<th style="text-align:right;">
+dry_bulb_lag35
+</th>
+<th style="text-align:right;">
+dry_bulb_lag36
+</th>
+<th style="text-align:right;">
+dry_bulb_lag37
+</th>
+<th style="text-align:right;">
+dry_bulb_lag38
+</th>
+<th style="text-align:right;">
+dry_bulb_lag39
+</th>
+<th style="text-align:right;">
+dry_bulb_lag40
+</th>
+<th style="text-align:right;">
+dry_bulb_lag41
+</th>
+<th style="text-align:right;">
+dry_bulb_lag42
+</th>
+<th style="text-align:right;">
+dry_bulb_lag43
+</th>
+<th style="text-align:right;">
+dry_bulb_lag44
+</th>
+<th style="text-align:right;">
+dry_bulb_lag45
+</th>
+<th style="text-align:right;">
+dry_bulb_lag46
+</th>
+<th style="text-align:right;">
+dry_bulb_lag47
+</th>
+<th style="text-align:right;">
+dry_bulb_lag48
+</th>
+<th style="text-align:right;">
+dry_bulb_lag49
+</th>
+<th style="text-align:right;">
+dry_bulb_lag50
+</th>
+<th style="text-align:right;">
+dry_bulb_lag51
+</th>
+<th style="text-align:right;">
+dry_bulb_lag52
+</th>
+<th style="text-align:right;">
+dry_bulb_lag53
+</th>
+<th style="text-align:right;">
+dry_bulb_lag54
+</th>
+<th style="text-align:right;">
+dry_bulb_lag55
+</th>
+<th style="text-align:right;">
+dry_bulb_lag56
+</th>
+<th style="text-align:right;">
+dry_bulb_lag57
+</th>
+<th style="text-align:right;">
+dry_bulb_lag58
+</th>
+<th style="text-align:right;">
+dry_bulb_lag59
+</th>
+<th style="text-align:right;">
+dry_bulb_lag60
+</th>
+<th style="text-align:right;">
+dry_bulb_lag61
+</th>
+<th style="text-align:right;">
+dry_bulb_lag62
+</th>
+<th style="text-align:right;">
+dry_bulb_lag63
+</th>
+<th style="text-align:right;">
+dry_bulb_lag64
+</th>
+<th style="text-align:right;">
+dry_bulb_lag65
+</th>
+<th style="text-align:right;">
+dry_bulb_lag66
+</th>
+<th style="text-align:right;">
+dry_bulb_lag67
+</th>
+<th style="text-align:right;">
+dry_bulb_lag68
+</th>
+<th style="text-align:right;">
+dry_bulb_lag69
+</th>
+<th style="text-align:right;">
+dry_bulb_lag70
+</th>
+<th style="text-align:right;">
+dry_bulb_lag71
+</th>
+<th style="text-align:right;">
+dry_bulb_lag72
+</th>
+<th style="text-align:right;">
+dew_pnt_lag1
+</th>
+<th style="text-align:right;">
+dew_pnt_lag2
+</th>
+<th style="text-align:right;">
+dew_pnt_lag3
+</th>
+<th style="text-align:right;">
+dew_pnt_lag4
+</th>
+<th style="text-align:right;">
+dew_pnt_lag5
+</th>
+<th style="text-align:right;">
+dew_pnt_lag6
+</th>
+<th style="text-align:right;">
+dew_pnt_lag7
+</th>
+<th style="text-align:right;">
+dew_pnt_lag8
+</th>
+<th style="text-align:right;">
+dew_pnt_lag9
+</th>
+<th style="text-align:right;">
+dew_pnt_lag10
+</th>
+<th style="text-align:right;">
+dew_pnt_lag11
+</th>
+<th style="text-align:right;">
+dew_pnt_lag12
+</th>
+<th style="text-align:right;">
+dew_pnt_lag13
+</th>
+<th style="text-align:right;">
+dew_pnt_lag14
+</th>
+<th style="text-align:right;">
+dew_pnt_lag15
+</th>
+<th style="text-align:right;">
+dew_pnt_lag16
+</th>
+<th style="text-align:right;">
+dew_pnt_lag17
+</th>
+<th style="text-align:right;">
+dew_pnt_lag18
+</th>
+<th style="text-align:right;">
+dew_pnt_lag19
+</th>
+<th style="text-align:right;">
+dew_pnt_lag20
+</th>
+<th style="text-align:right;">
+dew_pnt_lag21
+</th>
+<th style="text-align:right;">
+dew_pnt_lag22
+</th>
+<th style="text-align:right;">
+dew_pnt_lag23
+</th>
+<th style="text-align:right;">
+dew_pnt_lag24
+</th>
+<th style="text-align:right;">
+dew_pnt_lag25
+</th>
+<th style="text-align:right;">
+dew_pnt_lag26
+</th>
+<th style="text-align:right;">
+dew_pnt_lag27
+</th>
+<th style="text-align:right;">
+dew_pnt_lag28
+</th>
+<th style="text-align:right;">
+dew_pnt_lag29
+</th>
+<th style="text-align:right;">
+dew_pnt_lag30
+</th>
+<th style="text-align:right;">
+dew_pnt_lag31
+</th>
+<th style="text-align:right;">
+dew_pnt_lag32
+</th>
+<th style="text-align:right;">
+dew_pnt_lag33
+</th>
+<th style="text-align:right;">
+dew_pnt_lag34
+</th>
+<th style="text-align:right;">
+dew_pnt_lag35
+</th>
+<th style="text-align:right;">
+dew_pnt_lag36
+</th>
+<th style="text-align:right;">
+dew_pnt_lag37
+</th>
+<th style="text-align:right;">
+dew_pnt_lag38
+</th>
+<th style="text-align:right;">
+dew_pnt_lag39
+</th>
+<th style="text-align:right;">
+dew_pnt_lag40
+</th>
+<th style="text-align:right;">
+dew_pnt_lag41
+</th>
+<th style="text-align:right;">
+dew_pnt_lag42
+</th>
+<th style="text-align:right;">
+dew_pnt_lag43
+</th>
+<th style="text-align:right;">
+dew_pnt_lag44
+</th>
+<th style="text-align:right;">
+dew_pnt_lag45
+</th>
+<th style="text-align:right;">
+dew_pnt_lag46
+</th>
+<th style="text-align:right;">
+dew_pnt_lag47
+</th>
+<th style="text-align:right;">
+dew_pnt_lag48
+</th>
+<th style="text-align:right;">
+dew_pnt_lag49
+</th>
+<th style="text-align:right;">
+dew_pnt_lag50
+</th>
+<th style="text-align:right;">
+dew_pnt_lag51
+</th>
+<th style="text-align:right;">
+dew_pnt_lag52
+</th>
+<th style="text-align:right;">
+dew_pnt_lag53
+</th>
+<th style="text-align:right;">
+dew_pnt_lag54
+</th>
+<th style="text-align:right;">
+dew_pnt_lag55
+</th>
+<th style="text-align:right;">
+dew_pnt_lag56
+</th>
+<th style="text-align:right;">
+dew_pnt_lag57
+</th>
+<th style="text-align:right;">
+dew_pnt_lag58
+</th>
+<th style="text-align:right;">
+dew_pnt_lag59
+</th>
+<th style="text-align:right;">
+dew_pnt_lag60
+</th>
+<th style="text-align:right;">
+dew_pnt_lag61
+</th>
+<th style="text-align:right;">
+dew_pnt_lag62
+</th>
+<th style="text-align:right;">
+dew_pnt_lag63
+</th>
+<th style="text-align:right;">
+dew_pnt_lag64
+</th>
+<th style="text-align:right;">
+dew_pnt_lag65
+</th>
+<th style="text-align:right;">
+dew_pnt_lag66
+</th>
+<th style="text-align:right;">
+dew_pnt_lag67
+</th>
+<th style="text-align:right;">
+dew_pnt_lag68
+</th>
+<th style="text-align:right;">
+dew_pnt_lag69
+</th>
+<th style="text-align:right;">
+dew_pnt_lag70
+</th>
+<th style="text-align:right;">
+dew_pnt_lag71
+</th>
+<th style="text-align:right;">
+dew_pnt_lag72
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1129.592
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 01:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1080.286
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 02:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1056.508
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 03:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1049.842
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 04:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1059.911
+</td>
+<td style="text-align:right;">
+41
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 05:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SEMASS
+</td>
+<td style="text-align:left;">
+2016-05-01
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1084.840
+</td>
+<td style="text-align:right;">
+41
+</td>
+<td style="text-align:right;">
+37
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+<td style="text-align:left;">
+2016-05-01 06:00:00
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+122
+</td>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+41
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+43
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:right;">
+35
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:right;">
+33
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="fitting-the-model" class="section level2">
+<h2>Fitting the model</h2>
+<p>I’m only fitting one model with an L1 penalty of 50 for each zone. You can do your own cross-validation by changing the <code>method</code> argument in <code>trainControl</code> and updating the list that defines <code>xgb_grid</code> to include extra hyperparameter values. The <code>cross_df</code> function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning.</p>
+<p>Note that we have set <code>allowParallel</code> to FALSE in <code>trainControl</code>. This is to avoid issues with XGBoost which automatically does parallel processing when the <code>nthread</code> argument is not set. I prefer using XGBoost’s parallelisation rather than <code>caret</code>’s as I found myself running into RAM usage issues with <code>caret</code>.</p>
+<pre class="r"><code>xgb_ctrl &lt;- trainControl(
+  method = &quot;none&quot;,
+  allowParallel = FALSE,
+  returnData = FALSE,
+  trim = TRUE,
+  returnResamp = &quot;none&quot;,
+  savePredictions = &quot;none&quot;
+)
+
+xgb_grid &lt;- list(
+  nrounds = 200,
+  alpha = 50,
+  lambda = 0,
+  eta = 0.1
+) %&gt;% 
+  cross_df()
+
+fit_boosted_model &lt;- function(train_df) {
+  train_df %&gt;%
+    select(demand, hour, day_of_year, day_of_week, holiday_flag, trend,
+           starts_with(&quot;dry_bulb&quot;), starts_with(&quot;dew_pnt&quot;)) %&gt;%
+    na.omit() %&gt;% 
+    train(demand ~ . ,
+          data = .,
+          method=&quot;xgbLinear&quot;,
+          trControl = xgb_ctrl,
+          tuneGrid = xgb_grid)
+}
+
+elec_df &lt;- elec_df %&gt;% 
+  mutate(fit = map(data, fit_boosted_model))</code></pre>
+</div>
+<div id="simulating-in-a-hierarchy" class="section level2">
+<h2>Simulating in a hierarchy</h2>
+<p>Now that we have fit our demand models we need to create weather and residual simulations. The weather simulations will be fed into the demand model to predict the expected demand. Our goal is to create demand simulations so we also need to add residuals back in (or we are only simulating the conditional mean). So the final step is to add residual simulations to the expected demand to create true demand simulations.</p>
+<p>Unfortunately - there’s a lot of code refactoring in the package that I need to do! I’ll update this post asap with a simple approach to weather simulation and hierarchical reconciliation.</p>
+<!-- ### Weather simulations -->
+<!-- ```{r} -->
+<!-- # elec_df %>%  -->
+<!-- #   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start)) -->
+<!-- ``` -->
+<!-- ### Residual resampling -->
+<!-- ```{r} -->
+<!-- ``` -->
+<!-- ## Hierarchical reconciliation -->
+</div>
