@@ -1,0 +1,98 @@
+---
+title: "5 minute tidyverse: ggplot2"
+author: "Cameron Roach"
+date: "2018-12-11T03:48:00"
+slug: 5-minute-tidyverse-ggplot2
+categories: ["R"]
+tags: ["R", "Tutorial", "tidyverse", "ggplot2"]
+description: A short introduction to plotting in R using the `ggplot2` package.
+---
+
+
+
+<p>R’s <code>ggplot2</code> package allows for plots to be built up in layers. It ties in nicely with the tidyverse’s “tidy” way of structuring data, allowing different aesthetics of a plot to be controlled by variables in a data frame. An online reference is available from <a href="https://ggplot2.tidyverse.org/reference/">ggplot2.tidyverse.org/reference/</a>.</p>
+<div id="geoms-and-aesthetics" class="section level2">
+<h2>Geoms and aesthetics</h2>
+<p>A typical <code>ggplot2</code> function takes the following form:</p>
+<pre class="r"><code>library(tidyverse)
+ggplot(diamonds, aes(x = carat, y = price, colour = clarity)) +
+  geom_point()</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>The initial <code>ggplot</code> call specifies the data frame to be used and the aesthetic mappings. Aesthetic mappings describe how the data will be mapped to various aesthetics in various geoms. Aesthetics typically include properties such as the x-axis variable, y-axis variable, point colours and shapes. However, each geom differs and users should refer to the <code>R</code> help files to see what aesthetics are available. If the data and aesthetics are declared inside the <code>ggplot</code> function they will be common to every geom that is added. Alternatively, if they are declared inside one of the geoms like so</p>
+<pre class="r"><code>ggplot() +
+  geom_point(data = diamonds, aes(x = carat, y = price, colour = clarity))</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p>they will only apply to that geom. This can be useful when several data frames are to be used or when different geoms should have different aesthetics (e.g. colour points by clarity, but don’t colour a smoother).</p>
+<p>Some other geoms that you will frequently encounter include:</p>
+<ul>
+<li>geom_line</li>
+<li>geom_col</li>
+<li>geom_boxplot</li>
+<li>geom_histogram</li>
+<li>geom_density.</li>
+</ul>
+</div>
+<div id="adding-layers" class="section level2">
+<h2>Adding layers</h2>
+<p>We can build up a ggplot object by sequentially adding geoms. The following plot combines a simple scatter plot with 2D density contours:</p>
+<pre class="r"><code>ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
+  geom_point() +
+  geom_density_2d(alpha = 0.3)</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+</div>
+<div id="facetting" class="section level2">
+<h2>Facetting</h2>
+<p>Facetting is (imho) the best part about <code>ggplot2</code>. In the previous plot we may decide that the overlapping contours are a bit unclear. We can use facetting to split the plot across several panels. The following code adds the <code>facet_wrap</code> function which creates a separate panel for each species.</p>
+<pre class="r"><code>ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
+  geom_point() +
+  geom_density_2d(alpha = 0.3) +
+  facet_wrap(~Species)</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>If we want to facet by two or more variables we can also use the <code>facet_grid</code> function as shown below for the <code>mtcars</code> dataset. Panels for gear have been created across the top of the plot and panels for each combination of V/straight engine (vs) and transmission type (am).</p>
+<pre class="r"><code>ggplot(mtcars, aes(x = mpg, y = wt)) + 
+  geom_point() + 
+  facet_grid(vs + am ~ gear)</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+</div>
+<div id="smoothers" class="section level2">
+<h2>Smoothers</h2>
+<p>Smoothers can be added using the <code>geom_smooth</code> geom. The <code>method</code> and <code>formula</code> arguments can be used to specify the type of smooth line to fit. Below shows an example where four different smoothers have been plotted. Note that by assigning a string to the colour aesthetic we can also build up a legend.</p>
+<pre class="r"><code>ggplot(mpg, aes(x = displ, y = hwy)) + 
+  geom_point() +
+  geom_smooth(aes(colour = &quot;Default&quot;)) +
+  geom_smooth(aes(colour = &quot;Small span&quot;), span = 0.3) +
+  geom_smooth(aes(colour = &quot;Linear&quot;), method = &quot;lm&quot;, formula = y ~ x) +
+  geom_smooth(aes(colour = &quot;Quadratic&quot;), method = &quot;lm&quot;, formula = y ~ poly(x, 2)) +
+  labs(colour = &quot;Method&quot;)</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+</div>
+<div id="formatting-plots" class="section level2">
+<h2>Formatting plots</h2>
+<p>Finally, some useful functions for formatting plots include:</p>
+<ul>
+<li><code>labs</code> specifies chart titles, caption and axis labels</li>
+<li><code>xlim</code> and <code>ylim</code> changes the plot limits (note: smoothers will ignore values outside these ranges!)</li>
+<li><code>theme</code> tweaks the plot layout</li>
+<li><code>theme_bw</code>, <code>theme_dark</code>, etc. are complete themes that override all display settings of a plot.</li>
+</ul>
+<p>Applying these functions to the previous example gives the much prettier example shown below. Note that the confidence intervals have been removed by setting <code>se=FALSE</code> in each smoother geom.</p>
+<pre class="r"><code>ggplot(mpg, aes(x = displ, y = hwy)) + 
+  geom_point() +
+  geom_smooth(aes(colour = &quot;Default&quot;), se=FALSE) +
+  geom_smooth(aes(colour = &quot;Small span&quot;), se=FALSE, span = 0.3) +
+  geom_smooth(aes(colour = &quot;Linear&quot;), se=FALSE, method = &quot;lm&quot;, formula = y ~ x) +
+  geom_smooth(aes(colour = &quot;Quadratic&quot;), se=FALSE, method = &quot;lm&quot;, formula = y ~ poly(x, 2)) +
+  labs(title = &quot;Fuel economy&quot;,
+       subtitle = &quot;Relationship between engine displacement and highway miles&quot;,
+       x = &quot;Engine displacement (L)&quot;,
+       y = &quot;Highway miles per gallon&quot;,
+       caption = &quot;Data: http://fueleconomy.gov&quot;,
+       colour = &quot;Method&quot;) +
+  theme_bw() + 
+  theme(legend.position = &quot;bottom&quot;)</code></pre>
+<p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+</div>
+<div id="wrapping-up" class="section level2">
+<h2>Wrapping up</h2>
+<p>These are the features of <code>ggplot2</code> that I find myself using over and over again. There’s a lot more to <code>ggplot2</code> than what I have covered here, but mastering these fundamentals should see you producing attractive and informative plots with a minimum of effort.</p>
+</div>
