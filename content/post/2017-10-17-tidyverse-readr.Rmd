@@ -2,7 +2,7 @@
 title: "5 minute tidyverse: readr"
 author: "Cameron Roach"
 #date: 2017-12-16T10:23:00-00:00
-date: "`r format(Sys.time(), '%Y-%m-%dT%H:%M:00')`"
+date: 2017-12-16T14:09:00
 categories: ["R"]
 tags: ["R", "Tutorial", "tidyverse"]
 description: Introduces loading data from csv files into R and working with RStudio projects.

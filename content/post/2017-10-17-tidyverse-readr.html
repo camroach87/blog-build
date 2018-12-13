@@ -2,7 +2,7 @@
 title: "5 minute tidyverse: readr"
 author: "Cameron Roach"
 #date: 2017-12-16T10:23:00-00:00
-date: "2017-12-16T14:09:00"
+date: 2017-12-16T14:09:00
 categories: ["R"]
 tags: ["R", "Tutorial", "tidyverse"]
 description: Introduces loading data from csv files into R and working with RStudio projects.
@@ -49,27 +49,27 @@ data/5-min-tidyverse-data.csv</code></pre>
 ##   Date = col_character(),
 ##   Project = col_character(),
 ##   Component = col_character(),
-##   Income = col_integer()
+##   Income = col_double()
 ## )</code></pre>
 <p>We see from these messages that <code>read_csv</code> has determined the Date, Project and Component columns are character types whereas Income is integer. The data looks like</p>
 <pre class="r"><code>csv_data
 ## # A tibble: 14 x 4
-##          Date        Project Component Income
-##         &lt;chr&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
-##  1   1/1/2010 Fake project A       A.1   1661
-##  2  5/12/2011 Fake project A       A.2   2094
-##  3  13/1/2010 Fake project A       A.3   2286
-##  4  1/12/2011 Fake project A       A.4    650
-##  5  21/1/2010 Fake project A       A.5    646
-##  6 12/12/2011 Fake project A       A.6    480
-##  7  31/1/2010 Fake project B       B.1   1832
-##  8  1/12/2011 Fake project B       B.2   1317
-##  9  23/1/2010 Fake project B       B.3   1720
-## 10 30/13/2011 Fake project C       C.1   -817
-## 11  11/1/2010 Fake project C       C.2    801
-## 12 21/12/2011           &lt;NA&gt;       C.3   1376
-## 13  12/1/2010 Fake project C       C.4   2642
-## 14 11/12/2011 Fake project C       C.3   1210</code></pre>
+##    Date       Project        Component Income
+##    &lt;chr&gt;      &lt;chr&gt;          &lt;chr&gt;      &lt;dbl&gt;
+##  1 1/1/2010   Fake project A A.1         1661
+##  2 5/12/2011  Fake project A A.2         2094
+##  3 13/1/2010  Fake project A A.3         2286
+##  4 1/12/2011  Fake project A A.4          650
+##  5 21/1/2010  Fake project A A.5          646
+##  6 12/12/2011 Fake project A A.6          480
+##  7 31/1/2010  Fake project B B.1         1832
+##  8 1/12/2011  Fake project B B.2         1317
+##  9 23/1/2010  Fake project B B.3         1720
+## 10 30/13/2011 Fake project C C.1         -817
+## 11 11/1/2010  Fake project C C.2          801
+## 12 21/12/2011 &lt;NA&gt;           C.3         1376
+## 13 12/1/2010  Fake project C C.4         2642
+## 14 11/12/2011 Fake project C C.3         1210</code></pre>
 <!-- One nice thing about `read_csv` compared to `read.csv` is data is imported as a tibble rather than a data frame. Tibbles and data frames function very similarly. Tibbles have a few nice features such as only showing the top few rows which is handy if you are dealing with a lot of data. Another nice touch is character columns are imported as strings rather than factors by default. Factors can be useful, but they can be fiddly to deal with especially for newcomers to R. -->
 </div>
 </div>
@@ -90,10 +90,9 @@ data/5-min-tidyverse-data.csv</code></pre>
                        Income = col_integer()
                        )
                      )
-## Warning in rbind(names(probs), probs_f): number of columns of result is not
-## a multiple of vector length (arg 2)
 ## Warning: 1 parsing failure.
-## row # A tibble: 1 x 5 col     row   col   expected     actual                            file expected   &lt;int&gt; &lt;chr&gt;      &lt;chr&gt;      &lt;chr&gt;                           &lt;chr&gt; actual 1    10  Date valid date 30/13/2011 &#39;data/5-min-tidyverse-data.csv&#39; file # A tibble: 1 x 5</code></pre>
+## row  col   expected     actual                            file
+##  10 Date valid date 30/13/2011 &#39;data/5-min-tidyverse-data.csv&#39;</code></pre>
 <p>I don’t use this functionality too often, but more details can be found in the readr vignette (accessed by running <code>vignette(&quot;readr&quot;)</code>).</p>
 </div>
 <div id="white-space-trimming" class="section level3">
@@ -110,22 +109,22 @@ data/5-min-tidyverse-data.csv</code></pre>
 <p>The correctly formatted data is shown below.</p>
 <pre class="r"><code>csv_data
 ## # A tibble: 14 x 4
-##          Date        Project Component Income
-##        &lt;date&gt;          &lt;chr&gt;     &lt;chr&gt;  &lt;int&gt;
-##  1 2010-01-01 Fake project A       A.1   1661
-##  2 2011-12-05 Fake project A       A.2   2094
-##  3 2010-01-13 Fake project A       A.3   2286
-##  4 2011-12-01 Fake project A       A.4    650
-##  5 2010-01-21 Fake project A       A.5    646
-##  6 2011-12-12 Fake project A       A.6    480
-##  7 2010-01-31 Fake project B       B.1   1832
-##  8 2011-12-01 Fake project B       B.2   1317
-##  9 2010-01-23 Fake project B       B.3   1720
-## 10         NA Fake project C       C.1   -817
-## 11 2010-01-11 Fake project C       C.2    801
-## 12 2011-12-21           &lt;NA&gt;       C.3   1376
-## 13 2010-01-12 Fake project C       C.4   2642
-## 14 2011-12-11 Fake project C       C.3   1210</code></pre>
+##    Date       Project        Component Income
+##    &lt;date&gt;     &lt;chr&gt;          &lt;chr&gt;      &lt;int&gt;
+##  1 2010-01-01 Fake project A A.1         1661
+##  2 2011-12-05 Fake project A A.2         2094
+##  3 2010-01-13 Fake project A A.3         2286
+##  4 2011-12-01 Fake project A A.4          650
+##  5 2010-01-21 Fake project A A.5          646
+##  6 2011-12-12 Fake project A A.6          480
+##  7 2010-01-31 Fake project B B.1         1832
+##  8 2011-12-01 Fake project B B.2         1317
+##  9 2010-01-23 Fake project B B.3         1720
+## 10 NA         Fake project C C.1         -817
+## 11 2010-01-11 Fake project C C.2          801
+## 12 2011-12-21 &lt;NA&gt;           C.3         1376
+## 13 2010-01-12 Fake project C C.4         2642
+## 14 2011-12-11 Fake project C C.3         1210</code></pre>
 </div>
 <div id="next-up" class="section level2">
 <h2>Next up</h2>
