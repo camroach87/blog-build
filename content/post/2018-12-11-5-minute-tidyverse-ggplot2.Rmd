@@ -59,7 +59,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
 
 ## Facetting
 
-Facetting is (imho) the best part about `ggplot2`. In the previous plot we may decide that the overlapping contours are a bit unclear. We can use facetting to split the plot across several panels. The following code adds the `facet_wrap` function which creates a separate panel for each species.
+Facetting is (imho) the best part of `ggplot2`. In the previous plot we may decide that the overlapping contours are a bit unclear. We can use facetting to split the plot across several panels. The following code adds the `facet_wrap` function which creates a separate panel for each species.
 
 ```{r include = TRUE}
 ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
@@ -68,7 +68,7 @@ ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
   facet_wrap(~Species)
 ```
 
-If we want to facet by two or more variables we can also use the `facet_grid` function as shown below for the `mtcars` dataset. Panels for gear have been created across the top of the plot and panels for each combination of V/straight engine (vs) and transmission type (am).
+If we want to facet by two or more variables we can also use the `facet_grid` function as shown below for the `mtcars` dataset. Panels for gear have been created across the top of the plot and panels for each combination of V/straight engine (vs) and transmission type (am) have been created along the side.
 
 ```{r include=TRUE}
 ggplot(mtcars, aes(x = mpg, y = wt)) + 

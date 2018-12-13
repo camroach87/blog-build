@@ -42,13 +42,13 @@ ggplot(diamonds, aes(x = carat, y = price, colour = clarity)) +
 </div>
 <div id="facetting" class="section level2">
 <h2>Facetting</h2>
-<p>Facetting is (imho) the best part about <code>ggplot2</code>. In the previous plot we may decide that the overlapping contours are a bit unclear. We can use facetting to split the plot across several panels. The following code adds the <code>facet_wrap</code> function which creates a separate panel for each species.</p>
+<p>Facetting is (imho) the best part of <code>ggplot2</code>. In the previous plot we may decide that the overlapping contours are a bit unclear. We can use facetting to split the plot across several panels. The following code adds the <code>facet_wrap</code> function which creates a separate panel for each species.</p>
 <pre class="r"><code>ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, colour = Species)) +
   geom_point() +
   geom_density_2d(alpha = 0.3) +
   facet_wrap(~Species)</code></pre>
 <p><img src="/post/2018-12-11-5-minute-tidyverse-ggplot2_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
-<p>If we want to facet by two or more variables we can also use the <code>facet_grid</code> function as shown below for the <code>mtcars</code> dataset. Panels for gear have been created across the top of the plot and panels for each combination of V/straight engine (vs) and transmission type (am).</p>
+<p>If we want to facet by two or more variables we can also use the <code>facet_grid</code> function as shown below for the <code>mtcars</code> dataset. Panels for gear have been created across the top of the plot and panels for each combination of V/straight engine (vs) and transmission type (am) have been created along the side.</p>
 <pre class="r"><code>ggplot(mtcars, aes(x = mpg, y = wt)) + 
   geom_point() + 
   facet_grid(vs + am ~ gear)</code></pre>
