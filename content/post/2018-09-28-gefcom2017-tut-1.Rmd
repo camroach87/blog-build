@@ -201,7 +201,7 @@ gefcom <- gefcom %>%
 
 ## Next time
 
-Next we will look at hierarchical reconciliation.
+In the next post we will create weather and residual simulations. Hierarchical reconciliation will be used to create cohesive probabilistic forecasts.
 
 Here is all the code we have created up to this point.
 
