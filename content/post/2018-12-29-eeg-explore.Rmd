@@ -36,7 +36,6 @@ train_df <- data_frame(paths = list.files(file.path(data_dir, "train"),
                        subject = str_extract(filename, "(?<=subj)[[:digit:]]+"),
                        series = str_extract(filename, "(?<=series)[[:digit:]]+"),
                        dtype = str_extract(filename, "(?<=_)[[:alpha:]]+(?=.csv)")) %>% 
-  slice(1:10) %>% 
   mutate(data = map(paths, read_csv),
          data = map(data, ~ .x %>% 
                       mutate(id = as.numeric(str_extract(id, "[[:digit:]]+$"))) %>% 
@@ -101,9 +100,6 @@ Now I can plot the EEG time series and the event start and end times. Note that 
 
 ```{r}
 event_times_df <- train_df %>% 
-  # filter(subject == 1,
-  #        series == 1,
-  #        between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
   select(subject, series, ts, !!event_vars) %>% 
   gather(event, val, -c(ts, subject, series)) %>% 
   group_by(subject, series, event) %>%
