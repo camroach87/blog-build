@@ -1,0 +1,99 @@
+---
+title: "Exploring EEG data"
+author: "Cameron Roach"
+date: "2018-12-29T02:13:00"
+slug: eeg-explore
+categories: ["R"]
+tags: ["R", "EEG"]
+description: Exploring EEG data from the Grasp-and-Lift EEG Detection Kaggle competition.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	collapse = TRUE
+)
+
+rm(list=ls())
+
+data_dir <- file.path(Sys.getenv("DATA"), "kaggle-eeg")
+```
+
+Electroencephalographic (EEG) sensors record electrical activity in the brain. It is a non-invasive technique and has applications in medicine, gaming __TODO__:REF.
+
+## Data
+
+The data is taken from the [Grasp-and-Lift EEG Detection](https://www.kaggle.com/c/grasp-and-lift-eeg-detection) Kaggle competition. 32 channel EEG data was collected from 16 healthy subjects while they conducted several grasp and lift trials.
+
+
+```{r}
+library(tidyverse)
+
+train_df <- data_frame(paths = list.files(file.path(data_dir, "train"),
+                                          full.names = TRUE),
+                       filename = list.files(file.path(data_dir, "train")),
+                       subject = str_extract(filename, "(?<=subj)[[:digit:]]+"),
+                       series = str_extract(filename, "(?<=series)[[:digit:]]+"),
+                       dtype = str_extract(filename, "(?<=_)[[:alpha:]]+(?=.csv)")) %>% 
+  slice(1:10) %>% 
+  mutate(data = map(paths, read_csv),
+         data = map(data, ~ .x %>% 
+                      mutate(id = as.numeric(str_extract(id, "[[:digit:]]+$"))) %>% 
+                      rename(ts = id))) %>% 
+  select(-c(paths, filename)) %>% 
+  spread(dtype, data)
+
+eeg_vars <- names(train_df$data[[1]])[-1]
+event_vars <- names(train_df$events[[1]])[-1]
+  
+train_df <- train_df %>% 
+  mutate(data = map2(data, events, inner_join, by = "ts")) %>% 
+  select(-events) %>% 
+  unnest(data)
+```
+
+```{r}
+train_df %>% 
+  filter(subject == 1,
+         series == 1,
+         ts <= 1e4) %>% 
+  select(ts, !!event_vars) %>% 
+  gather(var, val, -ts) %>% 
+  mutate(var = fct_inorder(var)) %>% 
+  ggplot(aes(x = ts, y = val)) +
+  geom_line() +
+  facet_wrap(~var, ncol = 1, strip.position = "right")
+```
+
+
+
+
+```{r}
+event_idx <- train_df %>% 
+  filter(subject == 1,
+         series == 1,
+         HandStart == 1) %>% 
+  pull(ts) %>% 
+  min()
+
+n_window <- 100
+
+train_df %>% 
+  filter(subject == 1,
+         series == 1,
+         between(ts, event_idx - n_window, event_idx + n_window)) %>% 
+  select(ts, !!eeg_vars) %>% 
+  gather(sensor, val, -ts) %>% 
+  mutate(type = str_extract(sensor, "[[:alpha:]]+")) %>% 
+  ggplot(aes(x = ts, y = val, group = sensor)) +
+  geom_line() +
+  geom_vline(xintercept = event_idx, linetype = "dashed") +
+  facet_wrap(~type)
+```
+
+
+# TODO
+
+* Combine event data so that it is just two columns. ts and event. Check that events don't occur at the same time.
+* Once this is done, plot all events as vertical lines in the above plot.
