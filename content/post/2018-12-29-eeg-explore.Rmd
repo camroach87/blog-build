@@ -80,62 +80,70 @@ DataFrame StartEndIdxsC(NumericVector x, NumericVector ts) {
     }
   }
   
-  NumericMatrix subset(j,2);
+  NumericMatrix subset(j,3);
   
   for(int i = 0; i < j; i++) {
-    subset(i,_) = times(i,_);
+    subset(i,0) = i+1;
+    subset(i,1) = times(i,0);
+    subset(i,2) = times(i,1);
   }
   
-  DataFrame df = DataFrame::create( Named("start") = subset(_,0),
-                                    Named("end") = subset(_,1) );
+  DataFrame df = DataFrame::create(Named("event_idx") = subset(_,0),
+                                   Named("start") = subset(_,1),
+                                   Named("end") = subset(_,2) );
   
   return df;
 }
 ```
 
 
-Now I can plot the EEG time series and the event start and end times.
+Now I can plot the EEG time series and the event start and end times. Note that the time index is based on 500 Hz sampling.
 
 ```{r}
-event_idx <- train_df %>% 
-  filter(subject == 1,
-         series == 1,
-         HandStart == 1) %>% 
-  pull(ts) %>% 
-  min()
-
-start_buffer <- 500  # 500 Hz sampling
-end_buffer <- 3000
-
-plot_eeg_df <- train_df %>% 
-  filter(subject == 1,
-         series == 1,
-         between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
-  select(ts, !!eeg_vars) %>% 
-  gather(sensor, val, -ts) %>% 
-  mutate(type = str_extract(sensor, "[[:alpha:]]+"))
-
-plot_event_df <- train_df %>% 
-  filter(subject == 1,
-         series == 1,
-         between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
-  select(ts, !!event_vars) %>% 
-  gather(event, val, -ts) %>% 
-  group_by(event) %>%
+event_times_df <- train_df %>% 
+  # filter(subject == 1,
+  #        series == 1,
+  #        between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
+  select(subject, series, ts, !!event_vars) %>% 
+  gather(event, val, -c(ts, subject, series)) %>% 
+  group_by(subject, series, event) %>%
   nest() %>% 
   mutate(times = map(data, ~ StartEndIdxsC(.$val, .$ts))) %>% 
-  select(event, times) %>% 
+  select(subject, series, event, times) %>% 
   mutate(event = factor(event, levels = event_vars, ordered = TRUE)) %>% 
   unnest()
 
-ggplot() +
-  geom_line(data = plot_eeg_df,
-            aes(x = ts, y = val, group = sensor)) +
-  geom_rect(data = plot_event_df,
-            aes(xmin=start, xmax=end, ymin=-Inf, ymax=Inf, fill = event),
-            alpha = 0.5) +
-  facet_wrap(~type) +
-  theme(legend.position = "none")
+plot_event <- function(subject, series, event_idx, sample_buffer = 500) {
+  plot_event_df <- event_times_df %>% 
+    filter(subject == !!subject,
+           series == !!series,
+           event_idx == !!event_idx)
+  
+  plot_eeg_df <- train_df %>% 
+    filter(subject == !!subject,
+           series == !!series,
+           between(ts, min(plot_event_df$start) - sample_buffer,
+                   max(plot_event_df$end) + sample_buffer)) %>% 
+    select(ts, !!eeg_vars) %>% 
+    gather(sensor, val, -ts) %>% 
+    mutate(type = str_extract(sensor, "[[:alpha:]]+"))
+  
+  p <- ggplot() +
+    geom_line(data = plot_eeg_df,
+              aes(x = ts, y = val, group = sensor)) +
+    geom_rect(data = plot_event_df,
+              aes(xmin=start, xmax=end, ymin=-Inf, ymax=Inf, fill = event),
+              alpha = 0.5) +
+    facet_wrap(~type) +
+    theme(legend.position = "bottom") +
+    labs(title = paste0("Subject: ", subject, "; Series: ", series, 
+                        "; Event #: ", event_idx))
+  
+  p
+}
+
+# Plot options
+plot_event(1, 1, 1)
 ```
 
 
