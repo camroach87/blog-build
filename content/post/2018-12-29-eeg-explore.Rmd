@@ -60,16 +60,82 @@ train_df %>%
          ts <= 1e4) %>% 
   select(ts, !!event_vars) %>% 
   gather(var, val, -ts) %>% 
-  mutate(var = fct_inorder(var)) %>% 
+  mutate(var = factor(var, levels = event_vars, ordered = TRUE)) %>% 
   ggplot(aes(x = ts, y = val)) +
   geom_line() +
   facet_wrap(~var, ncol = 1, strip.position = "right")
 ```
 
 
+Wrote my own function to loop through the data and find the start and end indexes of each event. Decided to use `C++` as it was about thirty times faster when I benchmarked against equivalent `R` code and I've been looking for an excuse to play around with `Rcpp`...
+
+```{Rcpp}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+DataFrame StartEndIdxsC(NumericVector x, NumericVector ts) {
+  int n = x.size();
+  NumericMatrix times(n, 2);
+  int j = 0;
+  int start_idx = 0;
+  
+  for(int i = 0; i < n; i++) {
+    if (start_idx == 0 && x[i] == 1)
+    {
+      times(j,0) = ts[i];
+      start_idx = 1;
+    } 
+    else if (start_idx == 1 && x[i] == 0) 
+    {
+      times(j,1) = ts[i];
+      start_idx = 0;
+      j = j + 1;
+    }
+  }
+  
+  NumericMatrix subset(j,2);
+  
+  for(int i = 0; i < j; i++) {
+    subset(i,_) = times(i,_);
+  }
+  
+  DataFrame df = DataFrame::create( Named("start") = subset(_,0),
+                                    Named("end") = subset(_,1) );
+  
+  return df;
+}
+```
+
 
 
 ```{r}
+# #' Calculates start and end indexes
+# #'
+# #' NOTE: if final entry is a 1, the end won't be calculated.
+# start_end_idxs <- function(x, ts) {
+#   n <- length(x)
+#   l <- vector("list", n)
+#   j <- 1
+#   start_idx <- 0
+#   
+#   for (i in 1:n) {
+#     if (start_idx == 0 & x[i] == 1) {
+#       start <- ts[i]
+#       start_idx <- 1
+#     } else if (start_idx == 1 & x[i] == 0) {
+#       end <- ts[i]
+#       start_idx <- 0
+#       l[[j]] <- data_frame(start = start,
+#                            end = end)
+#       j <- j + 1
+#     }
+#   }
+#   
+#   bind_rows(l[!unlist(lapply(l, is.null))])
+# }
+
+
 event_idx <- train_df %>% 
   filter(subject == 1,
          series == 1,
@@ -77,19 +143,38 @@ event_idx <- train_df %>%
   pull(ts) %>% 
   min()
 
-n_window <- 100
+start_buffer <- 500  # 500 Hz sampling
+end_buffer <- 3000
 
-train_df %>% 
+plot_eeg_df <- train_df %>% 
   filter(subject == 1,
          series == 1,
-         between(ts, event_idx - n_window, event_idx + n_window)) %>% 
+         between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
   select(ts, !!eeg_vars) %>% 
   gather(sensor, val, -ts) %>% 
-  mutate(type = str_extract(sensor, "[[:alpha:]]+")) %>% 
-  ggplot(aes(x = ts, y = val, group = sensor)) +
-  geom_line() +
-  geom_vline(xintercept = event_idx, linetype = "dashed") +
-  facet_wrap(~type)
+  mutate(type = str_extract(sensor, "[[:alpha:]]+"))
+
+plot_event_df <- train_df %>% 
+  filter(subject == 1,
+         series == 1,
+         between(ts, event_idx - start_buffer, event_idx + end_buffer)) %>% 
+  select(ts, !!event_vars) %>% 
+  gather(event, val, -ts) %>% 
+  group_by(event) %>%
+  nest() %>% 
+  mutate(times = map(data, ~ StartEndIdxsC(.$val, .$ts))) %>% 
+  select(event, times) %>% 
+  mutate(event = factor(event, levels = event_vars, ordered = TRUE)) %>% 
+  unnest()
+
+ggplot() +
+  geom_line(data = plot_eeg_df,
+            aes(x = ts, y = val, group = sensor)) +
+  geom_rect(data = plot_event_df,
+            aes(xmin=start, xmax=end, ymin=-Inf, ymax=Inf, fill = event),
+            alpha = 0.5) +
+  facet_wrap(~type) +
+  theme(legend.position = "none")
 ```
 
 
