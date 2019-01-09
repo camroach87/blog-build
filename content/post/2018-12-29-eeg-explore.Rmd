@@ -36,23 +36,22 @@ train_df <- data_frame(paths = list.files(file.path(data_dir, "train"),
                        subject = str_extract(filename, "(?<=subj)[[:digit:]]+"),
                        series = str_extract(filename, "(?<=series)[[:digit:]]+"),
                        dtype = str_extract(filename, "(?<=_)[[:alpha:]]+(?=.csv)")) %>% 
+  filter(subject %in% c(1:2)) %>% 
   mutate(data = map(paths, read_csv),
          data = map(data, ~ .x %>% 
                       mutate(id = as.numeric(str_extract(id, "[[:digit:]]+$"))) %>% 
                       rename(ts = id))) %>% 
   select(-c(paths, filename)) %>% 
-  spread(dtype, data)
-
-eeg_vars <- names(train_df$data[[1]])[-1]
-event_vars <- names(train_df$events[[1]])[-1]
-  
-train_df <- train_df %>% 
+  spread(dtype, data) %>% 
   mutate(data = map2(data, events, inner_join, by = "ts")) %>% 
   select(-events) %>% 
   unnest(data)
+
+eeg_vars <- names(train_df)[4:35]
+event_vars <- names(train_df)[36:41]
 ```
 
-I wrote my own function to loop through the data and find the start and end indexes of each event. Decided to use `C++` as it was about thirty times faster when I benchmarked against equivalent `R` code and I've been looking for an excuse to play around with `Rcpp`...
+I wrote my own function to loop through the data and find the start and end indexes of each event. I decided to use `C++` as it was about thirty times faster when I benchmarked against equivalent `R` code and I've been looking for an excuse to play around with `Rcpp`...
 
 ```{Rcpp}
 #include <Rcpp.h>
@@ -138,8 +137,8 @@ plot_event <- function(subject, series, event_idx, sample_buffer = 500) {
   p
 }
 
-# Plot options
-plot_event(1, 1, 1)
+# Plot
+plot_event(2, 1, 1)
 ```
 
 
