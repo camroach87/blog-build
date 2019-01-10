@@ -6,6 +6,7 @@ slug: eeg-explore
 categories: ["R"]
 tags: ["R", "EEG"]
 description: Exploring EEG data from the Grasp-and-Lift EEG Detection Kaggle competition.
+draft: true
 ---
 
 ```{r setup, include=FALSE}
