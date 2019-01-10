@@ -137,11 +137,11 @@ gefcom <- gefcom %>%
 
 ## Fitting models
 
-### Cross validation
-
 Here we'll use `caret` to train and carry out cross-validation for our models.^[I'm only doing 5-fold cross-validation. I suspect you'd get better results carrying out time series cross-validation, but I' doubt the end results would vary by too much'd be suprised if the results were dramatically different.] You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning.
 
 Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid conflicts with XGBoost which automatically does parallel processing when the `nthread` argument is not set. I prefer using XGBoost's parallelisation rather than `caret`'s as I found myself running into RAM usage issues with `caret`.
+
+I've also create a function to fit our benchmark model, Tao's Vanilla energy model [@Hong2010-cy]. It has been used in several GEFComs (including GEFCom2017) and is the go-to energy forecasting benchmark model due to its ubiquity and ease of use. Note that we do not carry out any cross-validation
 
 ```{r}
 xgb_ctrl <- trainControl(
@@ -163,22 +163,37 @@ xgb_grid <- list(
   cross_df() %>% 
   as.data.frame()  # caret throws a weird error without
 
-fit_boosted_model <- function(data, zone) {
+fit_boosted_model <- function(data, zone, ...) {
   cat("Carrying out cross-validation for zone", zone, "...\n")
   
   data %>%
     select(demand, hour, day_of_year, day_of_week, holiday, trend,
            starts_with("drybulb"), starts_with("dewpnt")) %>%
     na.omit() %>%
+    sample_frac(...) %>% 
     train(demand ~ .,
           data = .,
           method="xgbLinear",
           trControl = xgb_ctrl,
           tuneGrid = xgb_grid)
 }
+
+fit_vanilla_model <- function(data, zone, ...) {
+  cat("Fitting vanilla model for zone", zone, "...\n")
+  
+  data %>%
+    select(demand, hour, month, day_of_week, trend, drybulb) %>%
+    na.omit() %>%
+    sample_frac(...) %>% 
+    train(demand ~ day_of_week*hour + poly(drybulb, 3, raw = TRUE)*month +
+            poly(drybulb, 3, raw = TRUE)*hour + trend,
+          data = .,
+          method = "lm",
+          trControl = xgb_ctrl)
+}
 ```
 
-Before fitting our models we need to split data into training and test data sets. I'm using a month of data for our test set and all remaining historical data for training.
+Before fitting our models we need to split data into training and test data sets. I'm using a month of data for our test set and all remaining historical data for training. Note that I've added a `frac` parameter to subsample the training data.^[The pedantic among you will also notice that I'm creating different training sets for our boosted and vanilla models. It's pretty trivial to make these the same but I don't want to bog this tutorial down in minor details so I'll leave this as an exercise! In practice you'll want to use all the data so it's a moot point.] This is purely to speed up the computational time when I compile this blog. You can remove this or set it to another value depending on how you want to compromise between speed and performance.
 
 ```{r}
 # Create train and test data sets
@@ -189,158 +204,36 @@ gefcom <- gefcom %>%
 
 # Train models
 gefcom <- gefcom %>%
-  mutate(caret = map2(train, zone, fit_boosted_model))
+  mutate(caret_xgb = map2(train, zone, fit_boosted_model, size = 0.01),
+         caret_vanilla = map2(train, zone, fit_vanilla_model, size = 0.01))
 ```
 
 
 ### Best fit
 
+Ok great, we've done our cross-validation (using 1% of the available data :-O) and now it's time to pick the best model. Once again, `purrr`'s `map` function comes to the fore.
 
-### Vanilla benchmark model
+```{r}
+gefcom <- gefcom %>% 
+  mutate(final_xgb = map(caret_xgb, "finalModel"),
+         final_vanilla = map(caret_vanilla, "finalModel"))
+```
 
+We now have this data frame which contains our training data, cross-validation results and final model for each zone.
+
+```{r}
+gefcom
+```
 
 ## Next time
 
 In the next post we will create weather and residual simulations. Hierarchical reconciliation will be used to create cohesive probabilistic forecasts.
 
-Here is all the code we have created up to this point.
-
-```{r}
-
-```
-
-
-<!-- ## Inputs -->
-
-<!-- We define some important dates. These will be needed when calculating trends and forecasts. -->
-
-<!-- ```{r} -->
-<!-- library(lubridate) -->
-
-<!-- fcst_start_dt <- dmy_hms("1/6/2016 00:00:00") -->
-<!-- fcst_end_dt <- dmy_hms("1/7/2016 00:00:00") -->
-<!-- hist_start_dt <- dmy_hms("1/5/2016 00:00:00") -->
-<!-- hist_end_dt <- dmy_hms("1/6/2016 00:00:00") -->
-<!-- ``` -->
-
-<!-- ## Data -->
-
-<!-- If you already have your data in an appropriate format (see table below) and you do not want to use the same predictors that I have you can skip ahead to fitting the model. -->
-
-<!-- ### Data structure -->
-
-<!-- ```{r} -->
-<!-- library(tidyverse) -->
-<!-- library(caret) -->
-<!-- library(gefcom2017data) -->
-
-<!-- gefcom -->
-<!-- ``` -->
-
-
-<!-- ### Feature engineering -->
-
-<!-- Date time, day of week and other features are added. -->
-
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(dt = ymd_h(paste(date, hour)), -->
-<!--          day_of_week = wday(dt), -->
-<!--          day_of_year = yday(dt)) -->
-<!-- ``` -->
-
-<!-- Our trend is based off the `hist_start_date` variable. While the actual start date for each zone's historical data may differ, as long as we are consistent in using this basis when predicting this will be fine. -->
-
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(trend = as.numeric(dt - hist_start_dt)) -->
-<!-- ``` -->
-
-<!-- We now need to add lags to our data frame. The `get_lagged_vars` function allows us to pass a vector of integers with the required lags and returns a data frame with new lag columns. We group and nest the data frame by zones to prevent lags including values from other zones. -->
-
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>% -->
-<!--   group_by(zone) %>% -->
-<!--   nest() %>% -->
-<!--   mutate(data = map(data, get_lagged_vars, -->
-<!--                     variables = c("dry_bulb", "dew_pnt"), lags = 1:72)) -->
-<!-- ``` -->
-
-<!-- Here is how the data should look for one of the zones when we unnest it. -->
-
-<!-- ```{r} -->
-<!-- elec_df %>%  -->
-<!--   filter(zone == "SEMASS") %>%  -->
-<!--   unnest() %>%  -->
-<!--   head() %>%  -->
-<!--   kable() %>%  -->
-<!--   kable_styling() %>% -->
-<!--   scroll_box(width = "100%") -->
-<!-- ``` -->
-
-
-<!-- ## Fitting the model -->
-
-<!-- I'm only fitting one model with an L1 penalty of 50 for each zone. You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning. -->
-
-<!-- Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid issues with XGBoost which automatically does parallel processing when the `nthread` argument is not set. I prefer using XGBoost's parallelisation rather than `caret`'s as I found myself running into RAM usage issues with `caret`. -->
-
-<!-- ```{r} -->
-<!-- xgb_ctrl <- trainControl( -->
-<!--   method = "none", -->
-<!--   allowParallel = FALSE, -->
-<!--   returnData = FALSE, -->
-<!--   trim = TRUE, -->
-<!--   returnResamp = "none", -->
-<!--   savePredictions = "none" -->
-<!-- ) -->
-
-<!-- xgb_grid <- list( -->
-<!--   nrounds = 200, -->
-<!--   alpha = 50, -->
-<!--   lambda = 0, -->
-<!--   eta = 0.1 -->
-<!-- ) %>%  -->
-<!--   cross_df() -->
-
-<!-- fit_boosted_model <- function(train_df) { -->
-<!--   train_df %>% -->
-<!--     select(demand, hour, day_of_year, day_of_week, holiday_flag, trend, -->
-<!--            starts_with("dry_bulb"), starts_with("dew_pnt")) %>% -->
-<!--     na.omit() %>%  -->
-<!--     train(demand ~ . , -->
-<!--           data = ., -->
-<!--           method="xgbLinear", -->
-<!--           trControl = xgb_ctrl, -->
-<!--           tuneGrid = xgb_grid) -->
-<!-- } -->
-
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(fit = map(data, fit_boosted_model)) -->
-<!-- ``` -->
-
-
-<!-- ## Simulating in a hierarchy -->
-
-<!-- Now that we have fit our demand models we need to create weather and residual simulations. The weather simulations will be fed into the demand model to predict the expected demand. Our goal is to create demand simulations so we also need to add residuals back in (or we are only simulating the conditional mean). So the final step is to add residual simulations to the expected demand to create true demand simulations. -->
-
-<!-- Unfortunately - there's a lot of code refactoring in the package that I need to do! I'll update this post asap with a simple approach to weather simulation and hierarchical reconciliation. -->
-
-<!-- ### Weather simulations -->
-
-<!-- ```{r} -->
-<!-- # elec_df %>%  -->
-<!-- #   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start)) -->
-<!-- ``` -->
-
-<!-- ### Residual resampling -->
+<!-- For the efficient among you, here is all the code created to this point in one convenient chunk. -->
 
 <!-- ```{r} -->
 
 <!-- ``` -->
-
-
-<!-- ## Hierarchical reconciliation -->
 
 
 ## References {-}
