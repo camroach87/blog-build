@@ -28,7 +28,8 @@ devtools::install_github(&quot;camroach87/gefcom2017data&quot;)</code></pre>
 <div id="data" class="section level3">
 <h3>Data</h3>
 <p>The <code>gefcom</code> data frame contains the data we wish to work with. Eight bottom-level zones and two aggregated zones are included.</p>
-<pre class="r"><code>library(tidyverse)
+<pre class="r"><code>library(caret)
+library(tidyverse)
 library(lubridate)
 library(gefcom2017data)
 
@@ -47,7 +48,7 @@ gefcom
 ##  8 2017-01-01 07:00:00 NEMA…  2331.      36     33 2017-01-01  2017 Jan  
 ##  9 2017-01-01 08:00:00 NEMA…  2379.      38     32 2017-01-01  2017 Jan  
 ## 10 2017-01-01 09:00:00 NEMA…  2429.      40     31 2017-01-01  2017 Jan  
-## # ... with 1,241,700 more rows, and 7 more variables: hour &lt;dbl&gt;,
+## # … with 1,241,700 more rows, and 7 more variables: hour &lt;dbl&gt;,
 ## #   day_of_week &lt;fct&gt;, day_of_year &lt;dbl&gt;, weekend &lt;lgl&gt;,
 ## #   holiday_name &lt;chr&gt;, holiday &lt;lgl&gt;, trend &lt;dbl&gt;</code></pre>
 <p>A week of electricity demand data for each zone is shown below.</p>
@@ -80,7 +81,7 @@ gefcom
 </div>
 <div id="preprocessing" class="section level3">
 <h3>Preprocessing</h3>
-<p>Electricity demand is typically affected by weather conditions on previous days. To obtain more realistic demand simulations we include lags for the last 72 periods. We can use the <code>add_lags</code> function to do this. You can examine the new structure of the data for one of the zones below.</p>
+<p>Electricity demand is typically affected by weather conditions on previous days. To obtain better fitting models we include lags for the last 72 periods. We can use the <code>add_lags</code> function to do this. You can examine the new structure of the data for one of the zones below.</p>
 <pre class="r"><code>add_lags &lt;- function(data, variables, lags = 1) {
   for (iV in variables) {
     for (iL in lags) {
@@ -89,7 +90,7 @@ gefcom
     }
   }
   
-  # Remove NAs in first 72 rows due to lags
+  # Remove NAs in early rows due to lags
   data &lt;- data %&gt;% 
     slice((max(lags)+1):nrow(data))
   
@@ -99,14 +100,6 @@ gefcom
 gefcom &lt;- gefcom %&gt;%
   mutate(data = map(data, add_lags, variables = c(&quot;drybulb&quot;, &quot;dewpnt&quot;), 
                     lags = 1:72))
-
-# gefcom %&gt;%
-#   filter(zone == &quot;SEMASS&quot;) %&gt;%
-#   unnest() %&gt;%
-#   head() %&gt;%
-#   kable() %&gt;%
-#   kable_styling() %&gt;%
-#   scroll_box(width = &quot;100%&quot;)
 
 gefcom %&gt;%
   filter(zone == &quot;SEMASS&quot;) %&gt;%
@@ -124,7 +117,7 @@ gefcom %&gt;%
 ##  8 SEMA… 2017-01-04 07:00:00  1692.      41     39 2017-01-04  2017 Jan  
 ##  9 SEMA… 2017-01-04 08:00:00  1709.      41     38 2017-01-04  2017 Jan  
 ## 10 SEMA… 2017-01-04 09:00:00  1711.      41     38 2017-01-04  2017 Jan  
-## # ... with 124,089 more rows, and 151 more variables: hour &lt;dbl&gt;,
+## # … with 124,089 more rows, and 151 more variables: hour &lt;dbl&gt;,
 ## #   day_of_week &lt;fct&gt;, day_of_year &lt;dbl&gt;, weekend &lt;lgl&gt;,
 ## #   holiday_name &lt;chr&gt;, holiday &lt;lgl&gt;, trend &lt;dbl&gt;, drybulb_lag1 &lt;dbl&gt;,
 ## #   drybulb_lag2 &lt;dbl&gt;, drybulb_lag3 &lt;dbl&gt;, drybulb_lag4 &lt;dbl&gt;,
@@ -159,12 +152,13 @@ gefcom %&gt;%
 ## #   dewpnt_lag17 &lt;dbl&gt;, dewpnt_lag18 &lt;dbl&gt;, dewpnt_lag19 &lt;dbl&gt;,
 ## #   dewpnt_lag20 &lt;dbl&gt;, dewpnt_lag21 &lt;dbl&gt;, …</code></pre>
 <p><a href="https://www.youtube.com/watch?v=R2vBZuLI3oI">That’s a lot of lags!</a> Thankfully we can perform automatic feature selection and regularisation using the <code>caret</code> and <code>XGBoost</code> packages.</p>
-<p>As a final step we will set the <code>holiday</code> variable to <code>FALSE</code> on those occasions it falls on a weekend. It’s pretty clear from the boxplots below that while demand does drop a lot during weekday holidays, the same effect is not observed on weekends. Electricity demand seems to be about the same on weekends regardless of whether it is a public holiday or not.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a></p>
+<p>As a final step we will set the <code>holiday</code> variable to <code>FALSE</code> on those occasions a holiday falls on a weekend. It’s pretty clear from the boxplots below that while demand does drop a lot during weekday holidays, the same effect is not observed on weekends. Electricity demand seems to be about the same on weekends regardless of whether it is a public holiday or not.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a></p>
 <pre class="r"><code>gefcom %&gt;% 
   unnest() %&gt;% 
-  ggplot(aes(x = weekend, y = demand, colour = holiday)) + 
-  geom_boxplot() + 
-  facet_wrap(~zone, scales = &quot;free_y&quot;)</code></pre>
+  ggplot(aes(x = weekend, y = demand, fill = holiday)) + 
+  geom_boxplot(outlier.shape = &quot;o&quot;, outlier.alpha = 0.5) +
+  facet_wrap(~zone, scales = &quot;free_y&quot;) +
+  theme(legend.position = &quot;bottom&quot;)</code></pre>
 <p><img src="/post/2018-09-28-gefcom2017-tut-1_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
 <pre class="r"><code>
 gefcom &lt;- gefcom %&gt;% 
@@ -176,117 +170,120 @@ gefcom &lt;- gefcom %&gt;%
 </div>
 <div id="fitting-models" class="section level2">
 <h2>Fitting models</h2>
-<div id="feature-selection" class="section level3">
-<h3>Feature selection</h3>
-</div>
-<div id="cross-validation" class="section level3">
-<h3>Cross validation</h3>
-</div>
+<p>Here we’ll use <code>caret</code> to train and carry out cross-validation for our models.<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a> You can do your own cross-validation by changing the <code>method</code> argument in <code>trainControl</code> and updating the list that defines <code>xgb_grid</code> to include extra hyperparameter values. The <code>cross_df</code> function returns a data frame with all parameter combinations, so it is an easy way to create a grid for parameter tuning.</p>
+<p>Note that we have set <code>allowParallel</code> to FALSE in <code>trainControl</code>. This is to avoid conflicts with XGBoost which automatically does parallel processing when the <code>nthread</code> argument is not set. I prefer using XGBoost’s parallelisation rather than <code>caret</code>’s as I found myself running into RAM usage issues with <code>caret</code>.</p>
+<p>I’ve also created a function to fit our benchmark model, Tao’s Vanilla energy model <span class="citation">(Hong 2010)</span>. It has been used in several GEFComs (including GEFCom2017) and is the go-to energy forecasting benchmark model due to its ubiquity and ease of use. Note that we do not do any cross-validation or feature selection for this model - we use it as is.</p>
+<pre class="r"><code>xgb_ctrl &lt;- trainControl(
+  method = &quot;repeatedcv&quot;,
+  number = 5,
+  allowParallel = FALSE,
+  returnData = FALSE,
+  trim = TRUE,
+  returnResamp = &quot;none&quot;,
+  savePredictions = &quot;none&quot;
+)
+
+xgb_grid &lt;- list(
+  nrounds = 50,
+  alpha = c(0, 50),
+  lambda = c(0, 50),
+  eta = 0.1
+) %&gt;%
+  cross_df() %&gt;% 
+  as.data.frame()  # caret throws a weird error without
+
+fit_boosted_model &lt;- function(data, zone, ...) {
+  cat(&quot;Carrying out cross-validation for zone&quot;, zone, &quot;...\n&quot;)
+  
+  data %&gt;%
+    select(demand, hour, day_of_year, day_of_week, holiday, trend,
+           starts_with(&quot;drybulb&quot;), starts_with(&quot;dewpnt&quot;)) %&gt;%
+    na.omit() %&gt;%
+    sample_frac(...) %&gt;% 
+    train(demand ~ .,
+          data = .,
+          method=&quot;xgbLinear&quot;,
+          trControl = xgb_ctrl,
+          tuneGrid = xgb_grid)
+}
+
+fit_vanilla_model &lt;- function(data, zone, ...) {
+  cat(&quot;Fitting vanilla model for zone&quot;, zone, &quot;...\n&quot;)
+  
+  data %&gt;%
+    select(demand, hour, month, day_of_week, trend, drybulb) %&gt;%
+    na.omit() %&gt;%
+    sample_frac(...) %&gt;% 
+    train(demand ~ day_of_week*hour + poly(drybulb, 3, raw = TRUE)*month +
+            poly(drybulb, 3, raw = TRUE)*hour + trend,
+          data = .,
+          method = &quot;lm&quot;,
+          trControl = xgb_ctrl)
+}</code></pre>
+<p>Before fitting our models we need to split data into training and test data sets. I’m using a month of data for our test set and all remaining historical data for training. Note that I’ve added a <code>frac</code> parameter to subsample the training data.<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a> This is purely to reduce the computation time when I compile this blog. You can remove this or set it to another value depending on how you want to compromise between speed and performance.</p>
+<pre class="r"><code># Create train and test data sets
+gefcom &lt;- gefcom %&gt;% 
+  mutate(train = map(data, function(x) filter(x, x$date &lt; dmy(&quot;1/4/2017&quot;))),
+         test = map(data, function(x) filter(x, x$date &gt;= dmy(&quot;1/4/2017&quot;)))) %&gt;% 
+  select(-data)
+
+# Train models
+gefcom &lt;- gefcom %&gt;%
+  mutate(caret_xgb = map2(train, zone, fit_boosted_model, size = 0.01),
+         caret_vanilla = map2(train, zone, fit_vanilla_model, size = 0.01))
+## Carrying out cross-validation for zone NEMASSBOST ...
+## Carrying out cross-validation for zone WCMASS ...
+## Carrying out cross-validation for zone SEMASS ...
+## Carrying out cross-validation for zone RI ...
+## Carrying out cross-validation for zone CT ...
+## Carrying out cross-validation for zone VT ...
+## Carrying out cross-validation for zone NH ...
+## Carrying out cross-validation for zone ME ...
+## Carrying out cross-validation for zone MASS ...
+## Carrying out cross-validation for zone TOTAL ...
+## Fitting vanilla model for zone NEMASSBOST ...
+## Fitting vanilla model for zone WCMASS ...
+## Fitting vanilla model for zone SEMASS ...
+## Fitting vanilla model for zone RI ...
+## Fitting vanilla model for zone CT ...
+## Fitting vanilla model for zone VT ...
+## Fitting vanilla model for zone NH ...
+## Fitting vanilla model for zone ME ...
+## Fitting vanilla model for zone MASS ...
+## Fitting vanilla model for zone TOTAL ...</code></pre>
 <div id="best-fit" class="section level3">
 <h3>Best fit</h3>
+<p>Ok great, we’ve done our cross-validation (using 1% of the available data :-O) and now it’s time to pick the best model. Once again, <code>purrr</code>’s <code>map</code> function comes to the fore.</p>
+<pre class="r"><code>gefcom &lt;- gefcom %&gt;% 
+  mutate(final_xgb = map(caret_xgb, &quot;finalModel&quot;),
+         final_vanilla = map(caret_vanilla, &quot;finalModel&quot;))</code></pre>
+<p>Our data frame now contains data, cross-validation results and the final models for each zone.</p>
+<pre class="r"><code>gefcom
+## # A tibble: 10 x 7
+##    zone   train    test    caret_xgb caret_vanilla final_xgb  final_vanilla
+##    &lt;chr&gt;  &lt;list&gt;   &lt;list&gt;  &lt;list&gt;    &lt;list&gt;        &lt;list&gt;     &lt;list&gt;       
+##  1 NEMAS… &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  2 WCMASS &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  3 SEMASS &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  4 RI     &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  5 CT     &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  6 VT     &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  7 NH     &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  8 ME     &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+##  9 MASS   &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;     
+## 10 TOTAL  &lt;tibble… &lt;tibbl… &lt;S3: tra… &lt;S3: train&gt;   &lt;S3: xgb.… &lt;S3: lm&gt;</code></pre>
 </div>
 </div>
 <div id="next-time" class="section level2">
 <h2>Next time</h2>
-<p>Next we will look at hierarchical reconciliation.</p>
-<!-- ## Inputs -->
-<!-- We define some important dates. These will be needed when calculating trends and forecasts. -->
-<!-- ```{r} -->
-<!-- library(lubridate) -->
-<!-- fcst_start_dt <- dmy_hms("1/6/2016 00:00:00") -->
-<!-- fcst_end_dt <- dmy_hms("1/7/2016 00:00:00") -->
-<!-- hist_start_dt <- dmy_hms("1/5/2016 00:00:00") -->
-<!-- hist_end_dt <- dmy_hms("1/6/2016 00:00:00") -->
-<!-- ``` -->
-<!-- ## Data -->
-<!-- If you already have your data in an appropriate format (see table below) and you do not want to use the same predictors that I have you can skip ahead to fitting the model. -->
-<!-- ### Data structure -->
-<!-- ```{r} -->
-<!-- library(tidyverse) -->
-<!-- library(caret) -->
-<!-- library(gefcom2017data) -->
-<!-- gefcom -->
-<!-- ``` -->
-<!-- ### Feature engineering -->
-<!-- Date time, day of week and other features are added. -->
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(dt = ymd_h(paste(date, hour)), -->
-<!--          day_of_week = wday(dt), -->
-<!--          day_of_year = yday(dt)) -->
-<!-- ``` -->
-<!-- Our trend is based off the `hist_start_date` variable. While the actual start date for each zone's historical data may differ, as long as we are consistent in using this basis when predicting this will be fine. -->
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(trend = as.numeric(dt - hist_start_dt)) -->
-<!-- ``` -->
-<!-- We now need to add lags to our data frame. The `get_lagged_vars` function allows us to pass a vector of integers with the required lags and returns a data frame with new lag columns. We group and nest the data frame by zones to prevent lags including values from other zones. -->
-<!-- ```{r} -->
-<!-- elec_df <- elec_df %>% -->
-<!--   group_by(zone) %>% -->
-<!--   nest() %>% -->
-<!--   mutate(data = map(data, get_lagged_vars, -->
-<!--                     variables = c("dry_bulb", "dew_pnt"), lags = 1:72)) -->
-<!-- ``` -->
-<!-- Here is how the data should look for one of the zones when we unnest it. -->
-<!-- ```{r} -->
-<!-- elec_df %>%  -->
-<!--   filter(zone == "SEMASS") %>%  -->
-<!--   unnest() %>%  -->
-<!--   head() %>%  -->
-<!--   kable() %>%  -->
-<!--   kable_styling() %>% -->
-<!--   scroll_box(width = "100%") -->
-<!-- ``` -->
-<!-- ## Fitting the model -->
-<!-- I'm only fitting one model with an L1 penalty of 50 for each zone. You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning. -->
-<!-- Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid issues with XGBoost which automatically does parallel processing when the `nthread` argument is not set. I prefer using XGBoost's parallelisation rather than `caret`'s as I found myself running into RAM usage issues with `caret`. -->
-<!-- ```{r} -->
-<!-- xgb_ctrl <- trainControl( -->
-<!--   method = "none", -->
-<!--   allowParallel = FALSE, -->
-<!--   returnData = FALSE, -->
-<!--   trim = TRUE, -->
-<!--   returnResamp = "none", -->
-<!--   savePredictions = "none" -->
-<!-- ) -->
-<!-- xgb_grid <- list( -->
-<!--   nrounds = 200, -->
-<!--   alpha = 50, -->
-<!--   lambda = 0, -->
-<!--   eta = 0.1 -->
-<!-- ) %>%  -->
-<!--   cross_df() -->
-<!-- fit_boosted_model <- function(train_df) { -->
-<!--   train_df %>% -->
-<!--     select(demand, hour, day_of_year, day_of_week, holiday_flag, trend, -->
-<!--            starts_with("dry_bulb"), starts_with("dew_pnt")) %>% -->
-<!--     na.omit() %>%  -->
-<!--     train(demand ~ . , -->
-<!--           data = ., -->
-<!--           method="xgbLinear", -->
-<!--           trControl = xgb_ctrl, -->
-<!--           tuneGrid = xgb_grid) -->
-<!-- } -->
-<!-- elec_df <- elec_df %>%  -->
-<!--   mutate(fit = map(data, fit_boosted_model)) -->
-<!-- ``` -->
-<!-- ## Simulating in a hierarchy -->
-<!-- Now that we have fit our demand models we need to create weather and residual simulations. The weather simulations will be fed into the demand model to predict the expected demand. Our goal is to create demand simulations so we also need to add residuals back in (or we are only simulating the conditional mean). So the final step is to add residual simulations to the expected demand to create true demand simulations. -->
-<!-- Unfortunately - there's a lot of code refactoring in the package that I need to do! I'll update this post asap with a simple approach to weather simulation and hierarchical reconciliation. -->
-<!-- ### Weather simulations -->
-<!-- ```{r} -->
-<!-- # elec_df %>%  -->
-<!-- #   mutate(weather_sims = map(data, shuffle_weather, fcst_start_dt, fcst_end_dt, trend_start)) -->
-<!-- ``` -->
-<!-- ### Residual resampling -->
-<!-- ```{r} -->
-<!-- ``` -->
-<!-- ## Hierarchical reconciliation -->
+<p>In the next post we will perform weather and residual simulations before using hierarchical reconciliation to create cohesive probabilistic forecasts.</p>
 </div>
 <div id="references" class="section level2 unnumbered">
 <h2>References</h2>
 <div id="refs" class="references">
+<div id="ref-Hong2010-cy">
+<p>Hong, Tao. 2010. “Short Term Electric Load Forecasting.” PhD thesis, North Carolina State University.</p>
+</div>
 <div id="ref-Roach2018-pf">
 <p>Roach, Cameron. 2018. “Reconciled Boosted Models for GEFCom2017 Hierarchical Probabilistic Load Forecasting.” <em>International Journal of Forecasting</em>. <a href="http://dx.doi.org/10.1016/j.ijforecast.2018.09.009" class="uri">http://dx.doi.org/10.1016/j.ijforecast.2018.09.009</a>.</p>
 </div>
@@ -295,6 +292,8 @@ gefcom &lt;- gefcom %&gt;%
 <div class="footnotes">
 <hr />
 <ol>
-<li id="fn1"><p>Note that the wider whiskers and extra outliers for non-holidays is a reflection of having much more data for those days. There are few public holidays falling on weekends relative to non-holidays.<a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn1"><p>Note that the wider whiskers and extra outliers for non-holidays is a reflection of having much more data for those days. There are few public holidays falling on weekends relative to non-holidays.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>I’m only doing 5-fold cross-validation. I suspect you’d get slightly better results carrying out time series cross-validation.<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>You will also notice that I’m creating different training sets for our boosted and vanilla models. It’s pretty trivial to make these the same but I don’t want to bog this tutorial down in minor details so I’ll leave this as an exercise! In practice you’ll want to use all the data so it’s a moot point.<a href="#fnref3">↩</a></p></li>
 </ol>
 </div>

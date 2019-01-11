@@ -81,7 +81,7 @@ gefcom
 
 ### Preprocessing
 
-Electricity demand is typically affected by weather conditions on previous days. To obtain more realistic demand simulations we include lags for the last 72 periods. We can use the `add_lags` function to do this. You can examine the new structure of the data for one of the zones below.
+Electricity demand is typically affected by weather conditions on previous days. To obtain better fitting models we include lags for the last 72 periods. We can use the `add_lags` function to do this. You can examine the new structure of the data for one of the zones below.
 
 ```{r}
 add_lags <- function(data, variables, lags = 1) {
@@ -92,7 +92,7 @@ add_lags <- function(data, variables, lags = 1) {
     }
   }
   
-  # Remove NAs in first 72 rows due to lags
+  # Remove NAs in early rows due to lags
   data <- data %>% 
     slice((max(lags)+1):nrow(data))
   
@@ -103,14 +103,6 @@ gefcom <- gefcom %>%
   mutate(data = map(data, add_lags, variables = c("drybulb", "dewpnt"), 
                     lags = 1:72))
 
-# gefcom %>%
-#   filter(zone == "SEMASS") %>%
-#   unnest() %>%
-#   head() %>%
-#   kable() %>%
-#   kable_styling() %>%
-#   scroll_box(width = "100%")
-
 gefcom %>%
   filter(zone == "SEMASS") %>%
   unnest()
@@ -118,14 +110,15 @@ gefcom %>%
 
 [That's a lot of lags!](https://www.youtube.com/watch?v=R2vBZuLI3oI) Thankfully we can perform automatic feature selection and regularisation using the `caret` and `XGBoost` packages.
 
-As a final step we will set the `holiday` variable to `FALSE` on those occasions it falls on a weekend. It's pretty clear from the boxplots below that while demand does drop a lot during weekday holidays, the same effect is not observed on weekends. Electricity demand seems to be about the same on weekends regardless of whether it is a public holiday or not.^[Note that the wider whiskers and extra outliers for non-holidays is a reflection of having much more data for those days. There are few public holidays falling on weekends relative to non-holidays.]
+As a final step we will set the `holiday` variable to `FALSE` on those occasions a holiday falls on a weekend. It's pretty clear from the boxplots below that while demand does drop a lot during weekday holidays, the same effect is not observed on weekends. Electricity demand seems to be about the same on weekends regardless of whether it is a public holiday or not.^[Note that the wider whiskers and extra outliers for non-holidays is a reflection of having much more data for those days. There are few public holidays falling on weekends relative to non-holidays.]
 
 ```{r}
 gefcom %>% 
   unnest() %>% 
-  ggplot(aes(x = weekend, y = demand, colour = holiday)) + 
-  geom_boxplot() + 
-  facet_wrap(~zone, scales = "free_y")
+  ggplot(aes(x = weekend, y = demand, fill = holiday)) + 
+  geom_boxplot(outlier.shape = "o", outlier.alpha = 0.5) +
+  facet_wrap(~zone, scales = "free_y") +
+  theme(legend.position = "bottom")
 
 gefcom <- gefcom %>% 
   unnest() %>% 
@@ -137,11 +130,11 @@ gefcom <- gefcom %>%
 
 ## Fitting models
 
-Here we'll use `caret` to train and carry out cross-validation for our models.^[I'm only doing 5-fold cross-validation. I suspect you'd get better results carrying out time series cross-validation, but I' doubt the end results would vary by too much'd be suprised if the results were dramatically different.] You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a dataframe with all parameter combinations, so it is an easy way to create a grid for parameter tuning.
+Here we'll use `caret` to train and carry out cross-validation for our models.^[I'm only doing 5-fold cross-validation. I suspect you'd get slightly better results carrying out time series cross-validation.] You can do your own cross-validation by changing the `method` argument in `trainControl` and updating the list that defines `xgb_grid` to include extra hyperparameter values. The `cross_df` function returns a data frame with all parameter combinations, so it is an easy way to create a grid for parameter tuning.
 
 Note that we have set `allowParallel` to FALSE in `trainControl`. This is to avoid conflicts with XGBoost which automatically does parallel processing when the `nthread` argument is not set. I prefer using XGBoost's parallelisation rather than `caret`'s as I found myself running into RAM usage issues with `caret`.
 
-I've also create a function to fit our benchmark model, Tao's Vanilla energy model [@Hong2010-cy]. It has been used in several GEFComs (including GEFCom2017) and is the go-to energy forecasting benchmark model due to its ubiquity and ease of use. Note that we do not carry out any cross-validation
+I've also created a function to fit our benchmark model, Tao's Vanilla energy model [@Hong2010-cy]. It has been used in several GEFComs (including GEFCom2017) and is the go-to energy forecasting benchmark model due to its ubiquity and ease of use. Note that we do not do any cross-validation or feature selection for this model - we use it as is.
 
 ```{r}
 xgb_ctrl <- trainControl(
@@ -193,7 +186,7 @@ fit_vanilla_model <- function(data, zone, ...) {
 }
 ```
 
-Before fitting our models we need to split data into training and test data sets. I'm using a month of data for our test set and all remaining historical data for training. Note that I've added a `frac` parameter to subsample the training data.^[The pedantic among you will also notice that I'm creating different training sets for our boosted and vanilla models. It's pretty trivial to make these the same but I don't want to bog this tutorial down in minor details so I'll leave this as an exercise! In practice you'll want to use all the data so it's a moot point.] This is purely to speed up the computational time when I compile this blog. You can remove this or set it to another value depending on how you want to compromise between speed and performance.
+Before fitting our models we need to split data into training and test data sets. I'm using a month of data for our test set and all remaining historical data for training. Note that I've added a `frac` parameter to subsample the training data.^[You will also notice that I'm creating different training sets for our boosted and vanilla models. It's pretty trivial to make these the same but I don't want to bog this tutorial down in minor details so I'll leave this as an exercise! In practice you'll want to use all the data so it's a moot point.] This is purely to reduce the computation time when I compile this blog. You can remove this or set it to another value depending on how you want to compromise between speed and performance.
 
 ```{r}
 # Create train and test data sets
@@ -219,7 +212,7 @@ gefcom <- gefcom %>%
          final_vanilla = map(caret_vanilla, "finalModel"))
 ```
 
-We now have this data frame which contains our training data, cross-validation results and final model for each zone.
+Our data frame now contains data, cross-validation results and the final models for each zone.
 
 ```{r}
 gefcom
@@ -227,13 +220,6 @@ gefcom
 
 ## Next time
 
-In the next post we will create weather and residual simulations. Hierarchical reconciliation will be used to create cohesive probabilistic forecasts.
-
-<!-- For the efficient among you, here is all the code created to this point in one convenient chunk. -->
-
-<!-- ```{r} -->
-
-<!-- ``` -->
-
+In the next post we will perform weather and residual simulations before using hierarchical reconciliation to create cohesive probabilistic forecasts.
 
 ## References {-}
