@@ -1,12 +1,11 @@
 ---
 title: "GEFCom2017 tutorial"
 author: "Cameron Roach"
-#date: 2017-12-16T10:23:00-00:00
 date: 2018-09-28T14:35:00
 bibliography: "library.bib"
-categories: ["R"]
-tags: ["R", "Paper", "Forecasting", "Electricity"]
-description: Links to code for the paper "Reconciled boosted models for GEFCom2017 hierarchical probabilistic load forecasting".
+categories: ["Paper"]
+tags: ["R", "Paper", "Forecasting", "Electricity", "GEFCom2017"]
+description: Code for the paper "Reconciled boosted models for GEFCom2017 hierarchical probabilistic load forecasting".
 ---
 
 ```{r setup, include=FALSE}
