@@ -110,7 +110,7 @@ csv_data <- read_csv(file = "data/5-min-tidyverse-data.csv",
                      )
 ```
 
-I don't use this functionality too often, but more details can be found in the readr vignette (accessed by running `vignette("readr")`).
+More details can be found in the readr vignette (accessed by running `vignette("readr")`).
 
 ### White space trimming
 
@@ -127,7 +127,3 @@ The correctly formatted data is shown below.
 ```{r}
 csv_data
 ```
-
-## Next up
-
-We'll look at reshaping tibbles and data frames using `tidyr` and introduce piping using `magrittr`'s `%>%` function.
